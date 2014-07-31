@@ -1,0 +1,23 @@
+Package: streamTemperature
+Title: clean, prepare, and analyze stream temperature data
+Version: 0.1
+Authors@R: c(person("Daniel", "Hocking", role = c("aut", "cre"), email =
+    "dhocking@usgs.gov"), person("Kyle", "O'Neil", role = c("aut"), email =
+    "koneil@usgs.gov"), person("Ben", "Letcher", role = c("aut"), email =
+    "bletcher@usgs.gov"))
+Maintainer: Daniel Hocking <dhocking@usgs.gov>
+Description: This package cleans daily and subdaily temperature data, reduces
+    subdaily to daily data, joins with Daymet and landscape data. It also uses
+    a hierarchical model in JAGS to estimate coefficients and predicted daily
+    temperature.
+URL: 
+Depends:
+    R (>= 3.1.1),
+    rjags
+Imports:
+    
+Suggests:
+    NA
+License: NA
+LazyData: NA
+VignetteBuilder: NA
