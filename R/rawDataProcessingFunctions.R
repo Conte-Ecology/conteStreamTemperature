@@ -3,15 +3,20 @@
 #######################################################################################################
 
 
-#=========================================================================================================
-# This function goes through a timeseries record and removes extra entries(NAs) on the beginning and end of the
-#  record for each site in each year. This is mainly a space-saver.
-#    1) The stream temperature record (unique site ID, latitude, and longitude columns )
-#    2) The name of the column with the data you want to use to trim the dataframe
-#
-# It returns the same dataframe with extra entries .
-#=========================================================================================================
-
+#' @title trimmer
+#'
+#' @description
+#' \code{trimNAsFromRecord} returns something of great importance
+#'
+#' @details
+#' var: blah, blah, blah
+#' value: something, something
+#' This function goes through a timeseries record and removes extra entries(NAs) on the beginning and end of the
+#'  record for each site in each year. This is mainly a space-saver.
+#'    1) The stream temperature record (unique site ID, latitude, and longitude columns )
+#'    2) The name of the column with the data you want to use to trim the dataframe
+#'
+#' It returns the same dataframe with extra entries .
 trimNAsFromRecord <- function(record, columnToCheck){
   
   sites <- unique(record$site)

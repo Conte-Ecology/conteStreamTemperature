@@ -1,17 +1,23 @@
 # Functions used in working with the Daymet climate data
 
 
-#=========================================================================================================
-# This function indexes values from the master list of covariates for observed stream temperature sites.
-# It takes the following:
-#    1) The stream temperature record (unique site ID, latitude, longitude, columns)
-#    2) A dataframe of the covariates for the catchments (FEATUREIDs source)
-#    3) A master catchments shapefile
-#    4) A CRS string of the spatial data projection
-#    5) A string of variables to pull from the covariates list
-#
-# It returns a dataframe with the site name, lat/lon, FEATUREID, and the select covariate values.
-#=========================================================================================================
+#' @title index covariates
+#'
+#' @description
+#' \code{indexCovariateData} returns something of great importance
+#'
+#' @details
+#' var: blah, blah, blah
+#' value: something, something
+#' This function indexes values from the master list of covariates for observed stream temperature sites.
+#' It takes the following:
+#'    1) The stream temperature record (unique site ID, latitude, longitude, columns)
+#'    2) A dataframe of the covariates for the catchments (FEATUREIDs source)
+#'    3) A master catchments shapefile
+#'    4) A CRS string of the spatial data projection
+#'    5) A string of variables to pull from the covariates list
+#'
+#' It returns a dataframe with the site name, lat/lon, FEATUREID, and the select covariate values.
 indexCovariateData <- function(record, masterCovariates, catchmentShapefile, projectionString, fields){
   start.time <- proc.time()[3]
   

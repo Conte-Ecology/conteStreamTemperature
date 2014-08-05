@@ -1,3 +1,11 @@
+#' @title riverLabeller: Label Rivers
+#'
+#' @description
+#' \code{riverLabeller} returns something of great importance
+#'
+#' @details
+#' var: blah, blah, blah
+#' value: something, something
 riverLabeller <- function(var, value){
   value <- as.character(value)
   if (var=="site") { 

@@ -2,8 +2,6 @@
 .Rhistory
 .Rapp.history
 .RData
-*.Rproj
-*.Rbuildignore
 
 
 

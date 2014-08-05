@@ -1,12 +1,18 @@
-#=========================================================================================================
-# This function creates plots of raw stream temperature data.
-# It takes the following:
-#    1) The stream temperature record (unique site ID, date, stream temperature, and air temperature columns)
-#    2) The directory to save the plots to
-#
-# It returns a PNG file with plots of air and water plotted against each other and over time.
-#=========================================================================================================
-
+#' @title plot raw temps
+#'
+#' @description
+#' \code{plotRawTemperatureData} returns something of great importance
+#'
+#' @details
+#' var: blah, blah, blah
+#' value: something, something
+#'
+#' This function creates plots of raw stream temperature data.
+#' It takes the following:
+#'    1) The stream temperature record (unique site ID, date, stream temperature, and air temperature columns)
+#'    2) The directory to save the plots to
+#'
+#' It returns a PNG file with plots of air and water plotted against each other and over time.
 plotRawTemperatureData <- function(masterData, plotDirectory){
   
   library(ggplot2)
