@@ -19,7 +19,10 @@ Depends:
     lubridate,
     DataCombine,
     parallel,
-    rmarkdown
-License: MIT
+    rmarkdown, 
+    gridExtra,
+    reshape2,
+    sp
+License: file LICENSE
 LazyData: NA
 VignetteBuilder: knitr
