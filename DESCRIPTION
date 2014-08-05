@@ -11,7 +11,7 @@ Description: This package cleans daily and subdaily temperature data, reduces
     a hierarchical model in JAGS to estimate coefficients and predicted daily
     temperature.
 Depends:
-    R (>= 3.1.1),
+    R (>= 3.1.0),
     rjags,
     knitr,
     dplyr,
