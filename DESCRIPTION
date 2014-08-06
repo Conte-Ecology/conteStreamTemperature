@@ -19,7 +19,7 @@ Depends:
     lubridate,
     DataCombine,
     parallel,
-    rmarkdown, 
+    rmarkdown,
     gridExtra,
     reshape2,
     sp
