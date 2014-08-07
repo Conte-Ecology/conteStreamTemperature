@@ -1,7 +1,7 @@
-#' @title Sample JAGS in Chuncks
+#' @title Sample JAGS in Chunks
 #'
 #' @description
-#' \code{stdCovs} samples jags in parallel chunks with rjags jags.samples instead of coda.samples.
+#' \code{sampleJagsInChunks} samples jags in parallel chunks with rjags jags.samples instead of coda.samples.
 #'
 #' @param cl a cluster object, created by parallel package or by package snow. If NULL, use the registered default cluster.
 #' @param fileOutName Name of output file
