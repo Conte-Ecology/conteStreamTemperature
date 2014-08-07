@@ -23,7 +23,8 @@ Imports:
     rmarkdown,
     gridExtra,
     reshape2,
-    sp
+    sp,
+    abind
 License: file LICENSE
 LazyData: TRUE
 VignetteBuilder: knitr

@@ -100,7 +100,7 @@ sampleJagsInChunks <- function(cl,fileOutName,bugsName,data,inits,nAdapt,params,
     
     print( "##########" )
     
-    save(d, outP, i, adaptTime, sampleTime, file = fileOutName)  
+    save(data, outP, i, adaptTime, sampleTime, file = fileOutName)  
   }
   
   
