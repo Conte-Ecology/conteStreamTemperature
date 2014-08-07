@@ -1,5 +1,20 @@
-# sample jags with chunks
-
+#' @title Sample JAGS in Chuncks
+#'
+#' @description
+#' \code{stdCovs} samples jags in parallel chunks with rjags jags.samples instead of coda.samples.
+#'
+#' @param cl a cluster object, created by parallel package or by package snow. If NULL, use the registered default cluster.
+#' @param fileOutName Name of output file
+#' @param bugsName JAGS model name?
+#' @param data List of data for rjags
+#' @param inits Function for initializing starting values
+#' @param nAdapt Length of adaptation/burnin phase
+#' @param params List of parameters to monitor
+#' @param nIterChunk Number of iterations in each chunk
+#' @param nThin Thinning rate (not actually a rate)
+#' 
+#' @details
+#' blah, blah, blah
 sampleJagsInChunks <- function(cl,fileOutName,bugsName,data,inits,nAdapt,params,nIterChunk,nThin){
   
   ( beforeJags <- Sys.time() )
