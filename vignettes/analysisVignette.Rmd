@@ -2,3 +2,10 @@
 %\VignetteEngine(knitr)
 %\VignetteIndexEntry{Daily Stream Temperature Analysis}
 -->
+
+More coming soon
+===============
+
+```{r}
+1+1
+```
