@@ -1,23 +1,18 @@
 #' @title readStreamTempData
 #'
 #' @description
-#' \code{readStreamTempData} reads in stream temp timeseries and/or the respective covariate data for different data 
-#'   sources, joins them together, and outputs a dataframe
+#' \code{readStreamTempData} reads in stream temp timeseries and/or the respective covariate data for different data sources, joins them together, and outputs a dataframe
 #'
-#' @param timeSeries      A TRUE/FALSE statement of whether to read in the timeseries data.
-#' @param covariates      A TRUE/FALSE statement of whether to read in the covariate data.
-#' @param dataSourceList  A character vector of the agency abbreviations of the data sources.
-#' @param fieldListTS     A character vector of the common fields to be in the output dataframe.
-#' @param fieldListCD     A character vector of the common fields to be in the output dataframe. If set 
-#'                         set equal to 'ALL' then all fields are selected.
-#' @param directory       A character vector of the parent dataframe of where the data is stored (dataIn).
+#' @param timeSeries A TRUE/FALSE statement of whether to read in the timeseries data.
+#' @param covariates A TRUE/FALSE statement of whether to read in the covariate data.
+#' @param dataSourceList A character vector of the agency abbreviations of the data sources.
+#' @param fieldListTS A character vector of the common fields to be in the output dataframe.
+#' @param fieldListCD A character vector of the common fields to be in the output dataframe. If set equal to 'ALL' then all fields are selected.
+#' @param directory A character vector of the parent dataframe of where the data is stored (dataIn).
 #' @return Returns a dataframe with the site name, lat/lon, FEATUREID, and the select covariate values
 #' @details
-#' This function reads in stream temp timeseries and/or the respective covariate data for different data 
-#'   sources, joins them together, and outputs a dataframe.
+#' This function reads in stream temp timeseries and/or the respective covariate data for different data sources, joins them together, and outputs a dataframe.
 readStreamTempData <- function(timeSeries, covariates, dataSourceList, fieldListTS, fieldListCD, directory){
-  
-  # Loop through the agencies
   for ( i in 1:length(dataSourceList)){
     
     # Read in timeseries data
