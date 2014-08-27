@@ -1,27 +1,20 @@
-# Functions used in working with the different data sources.
-
-
-#=========================================================================================================
-# Description: 
-#   This function reads in stream temp timeseries and/or the respective covariate data for different data 
-#   sources, joins them together, and outputs a dataframe.
-# Usage:
-#   readStreamTempData(timeSeries = TRUE, covariates = TRUE, dataSourceList = c('CTDEP', 'MAFW', ...), 
-#                      fieldListTS = c('site', 'date', 'temp', ...), 
-#                      fieldListCS = 'ALL', 
-#                      directory = '.../temperatureProjects/dataIn/)
-#
-# Arguments:
-#    1) timeSeries      A TRUE/FALSE statement of whether to read in the timeseries data.
-#    2) covariates      A TRUE/FALSE statement of whether to read in the covariate data.
-#    3) dataSourceList  A character vector of the agency abbreviations of the data sources.
-#    4) fieldListTS     A character vector of the common fields to be in the output dataframe.
-#    5) fieldListCD     A character vector of the common fields to be in the output dataframe. If set 
-#                         set equal to 'ALL' then all fields are selected.
-#    6) directory       A character vector of the parent dataframe of where the data is stored (dataIn).
-#
-# It returns a dataframe with the site name, lat/lon, FEATUREID, and the select covariate values.
-#=========================================================================================================
+#' @title readStreamTempData
+#'
+#' @description
+#' \code{readStreamTempData} reads in stream temp timeseries and/or the respective covariate data for different data 
+#'   sources, joins them together, and outputs a dataframe
+#'
+#' @param timeSeries      A TRUE/FALSE statement of whether to read in the timeseries data.
+#' @param covariates      A TRUE/FALSE statement of whether to read in the covariate data.
+#' @param dataSourceList  A character vector of the agency abbreviations of the data sources.
+#' @param fieldListTS     A character vector of the common fields to be in the output dataframe.
+#' @param fieldListCD     A character vector of the common fields to be in the output dataframe. If set 
+#'                         set equal to 'ALL' then all fields are selected.
+#' @param directory       A character vector of the parent dataframe of where the data is stored (dataIn).
+#' @return Returns a dataframe with the site name, lat/lon, FEATUREID, and the select covariate values
+#' @details
+#' This function reads in stream temp timeseries and/or the respective covariate data for different data 
+#'   sources, joins them together, and outputs a dataframe.
 readStreamTempData <- function(timeSeries, covariates, dataSourceList, fieldListTS, fieldListCD, directory){
   
   # Loop through the agencies
@@ -63,20 +56,21 @@ readStreamTempData <- function(timeSeries, covariates, dataSourceList, fieldList
   # Output
   return(dataOut)
 }
-#=========================================================================================================
 
 
-#=========================================================================================================
-# This function indexes values from the master list of covariates for observed stream temperature sites.
-# It takes the following:
-#    1) The stream temperature record (unique site ID, latitude, and longitude columns )
-#    2) A dataframe of the covariates for the catchments (FEATUREIDs source)
-#    3) A master catchments shapefile
-#    4) A CRS string of the spatial data projection
-#    5) A string of variables to pull from the covariates list
-#
-# It returns a dataframe with the site name, lat/lon, FEATUREID, and the select covariate values.
-#=========================================================================================================
+#' @title indexCovariateData
+#'
+#' @description
+#' \code{indexCovariateData} Indexes values from the master list of covariates for observed stream temperature sites
+#'
+#' @param record The stream temperature record (unique site ID, latitude, and longitude columns )
+#' @param masterCovariates A dataframe of the covariates for the catchments (FEATUREIDs source)
+#' @param catchmentShapefile A master catchments shapefile
+#' @param projectionString A CRS string of the spatial data projection
+#' @param fields A string of variables to pull from the covariates list
+#' @return Returns a dataframe with the site name, lat/lon, FEATUREID, and the select covariate values
+#' @details
+#' This function indexes values from the master list of covariates for observed stream temperature sites.
 indexCovariateData <- function(record, masterCovariates, catchmentShapefile, projectionString, fields){
   start.time <- proc.time()[3]
   
@@ -117,20 +111,23 @@ indexCovariateData <- function(record, masterCovariates, catchmentShapefile, pro
   end.time   <- proc.time()[3]
   print(paste0((end.time-start.time)/3600, " hours"))
 }
-#=========================================================================================================
 
 
-
-#=========================================================================================================
-# This function corrects the covariate data file after the site locations have been manually checked.
-# It takes the following:
-#    1) The original covariate data file
-#    2) The "siteChanges" CSV file
-#    3) The master dataframes of both local and upstream covariate statistics
-#    4) A list of layers that get NAs assigned for local catchment values. (This will hopefully change with an updated layer)
-# It returns the same covariate dataframe with corrected values and a column indicating whether or not values
+#' @title correctCovariateData
+#'
+#' @description
+#' \code{correctCovariateData} corrects the covariate data file after the site locations have been manually checked.
+#'
+#' @param covariateData The original covariate data file
+#' @param siteChanges The "siteChanges" CSV file
+#' @param LocalStats The master dataframes of both local and upstream covariate statistics
+#' @param UpstreamStats from localstats?????
+#' @param impoundmentLayers A list of layers that get NAs assigned for local catchment values. (This will hopefully change with an updated layer)
+#' 
+#' @return the same covariate dataframe with corrected values and a column indicating whether or not values
 #   for that site changed.
-#=========================================================================================================
+#' @details
+#' This function corrects the covariate data file after the site locations have been manually checked.
 correctCovariateData <- function(covariateData, siteChanges, LocalStats, UpstreamStats, impoundmentLayers){
   
   d <- covariateData
@@ -211,18 +208,19 @@ correctCovariateData <- function(covariateData, siteChanges, LocalStats, Upstrea
     return(dataOut)} else( return(covariateData))
   
 }
-#=========================================================================================================
 
 
-
-
-
-
-#=========================================================================================================
-# This function indexes Daymet tiles by the latitude and longitude of a site.
-# It takes a latitude and longitude value.
-# It returns the Daymet tile that holds data for the coordinates given.
-#=========================================================================================================
+#' @title indexDaymetTileByLatLon
+#'
+#' @description
+#' \code{indexDaymetTileByLatLon} This function indexes Daymet tiles by the latitude and longitude of a site. sites
+#'
+#' @param SiteLat Site latitude
+#' @param SiteLon Site longitude
+#' 
+#' @return Returns the Daymet tile that holds data for the coordinates given.
+#' @details
+#' This function indexes Daymet tiles by the latitude and longitude of a site.
 indexDaymetTileByLatLon <- function(SiteLat, SiteLon){
 
   Tile <- ifelse( SiteLat > 40 & SiteLat < 42 & SiteLon > -74 & SiteLon < -72, 11754, #**
@@ -241,34 +239,31 @@ indexDaymetTileByLatLon <- function(SiteLat, SiteLon){
           "Tile Error")))))))))))))
 
   return(Tile)
-}
+
 # ** Explicitly checked with mapping software (ArcGIS).
-#=========================================================================================================
+}
 
 
-#=========================================================================================================
-#
-# Find Nearest Daymet Point
-#
-# Description: 
-#   This function takes the latitude and longitude of a site and calculates the nearest Daymet point based
-#     on the latitude/longitude arrays read in from Daymet. 
-# 
-# Usage:
-#   findNearestDaymetPoint(siteLat = 44.0 , siteLon = -72.5, 
-#                           dayLat = lat, dayLon = lon, 
-#                           currentTile = 11934)
-#
-# Arguments:
-#    1) siteLat         A single latitude value of the site.
-#    2) siteLon         A single longitude value of the site.
-#    3) dayLat          An array of latitude points as read in from Daymet NetCDF file.
-#    4) dayLon          An array of longitude points as read in from Daymet NetCDF file.
-#    5) currentTile     The Daymet tile that is currently being indexed.
-#
-# It returns the array position (row, col) of the nearest Daymet point to the site. This is used to index
-#   the climate records from the variable array as read in from Daymet.
-#=========================================================================================================
+#' @title findNearestDaymetPoint
+#'
+#' @description
+#' \code{findNearestDaymetPoint} This function takes the latitude and longitude of a site and calculates the nearest Daymet point based on the latitude/longitude arrays read in from Daymet. 
+#'
+#' @param siteLat A single latitude value of the site.
+#' @param siteLon A single longitude value of the site.
+#' @param dayLat An array of latitude points as read in from Daymet NetCDF file.
+#' @param dayLon An array of longitude points as read in from Daymet NetCDF file.
+#' @param currentTile The Daymet tile that is currently being indexed.
+#' 
+#' @return Returns array position (row, col) of the nearest Daymet point to the site.
+#' @details
+#' This function takes the latitude and longitude of a site and calculates the nearest Daymet point based on the latitude/longitude arrays read in from Daymet. It returns the array position (row, col) of the nearest Daymet point to the site. This is used to index the climate records from the variable array as read in from Daymet.
+#' 
+#' @examples
+#' 
+#' \dontrun{
+#' findNearestDaymetPoint(siteLat = 44.0 , siteLon = -72.5, dayLat = lat, dayLon = lon, currentTile = 11934)
+#' }
 findNearestDaymetPoint <- function(siteLat, siteLon, dayLat, dayLon, currentTile){
   
   library(sp)
@@ -292,39 +287,42 @@ findNearestDaymetPoint <- function(siteLat, siteLon, dayLat, dayLon, currentTile
   
   # Return the position in the Daymet array
   return(position)
-}# End function
-#=========================================================================================================
+}
 
 
-#=========================================================================================================
-#
-# Pair Daymet Climate Data for Local Points
-#
-# Description: 
-#   This function takes a period of record for a location and returns the corresponding time series of 
-#     climate data from Daymet. This is done by indexing the nearest Daymet point to the site location.
-# 
-# Usage:
-#   indexLocalDaymetVariablesForObservedSites(record = masterData , 
-#       variables = c('prcp', 'tmin', 'tmax'), 
-#       daymetDirectory = '//IGSAGBEBWS-MJO7/projects/dataIn/environmental/climate/daymet/unzipped/Daily')
-#
-# Arguments:
-#    1) record          A dataframe indicating the period of record ( limited to 1980 - 2013) over which to 
-#                         pull climate data. Minimum dataframe column requirements and format:
-#                         ---------------------------------------------------------------------------------
-#                         'data.frame':  3228940 obs. of  5 variables:
-#                          $ site     : chr  "MADEP_W1466_M1" "MADEP_W1466_M1" "MADEP_W1466_M1" ...
-#                          $ year     : num  1980 1980 1980 1980 1980 1980 1980 1980 1980 ...
-#                          $ dOY      : num  1 2 3 4 5 6 7 8 9 ...
-#                          $ Latitude : num  42.5 42.5 42.5 42.5 ...
-#                          $ Longitude: num  -72.9 -72.9 -72.9 -72.9 ...
-#                         ---------------------------------------------------------------------------------
-#    2) variables       A string listing the climate variables (as named by Daymet) to be indexed
-#    3) daymetDirectory A string indicating the folder where Daymet files reside
-#
-# It returns the record with added columns for Daymet variable records.
-#=========================================================================================================
+#' @title indexLocalDaymetVariablesForObservedSites
+#'
+#' @description
+#' \code{indexLocalDaymetVariablesForObservedSites} takes a period of record for a location and returns the corresponding time series of climate data from Daymet. This is done by indexing the nearest Daymet point to the site location.
+#'
+#' @param record dataframe indicating the period of record ( limited to 1980 - 2013) over which to pull climate data.
+#' @param variables A string listing the climate variables (as named by Daymet) to be indexed
+#' @param daymetDirectory string indicating the folder where Daymet files reside
+#' 
+#' @return Returns the record with added columns for Daymet variable records.
+#' @details
+#' This function takes a period of record for a location and returns the corresponding time series of climate data from Daymet. This is done by indexing the nearest Daymet point to the site location.
+#' 
+#' Arguments:
+#'    1) record          A dataframe indicating the period of record ( limited to 1980 - 2013) over which to 
+#'                         pull climate data. Minimum dataframe column requirements and format:
+#'                         ---------------------------------------------------------------------------------
+#'                         'data.frame':  3228940 obs. of  5 variables:
+#'                          $ site     : chr  "MADEP_W1466_M1" "MADEP_W1466_M1" "MADEP_W1466_M1" ...
+#'                          $ year     : num  1980 1980 1980 1980 1980 1980 1980 1980 1980 ...
+#'                          $ dOY      : num  1 2 3 4 5 6 7 8 9 ...
+#'                          $ Latitude : num  42.5 42.5 42.5 42.5 ...
+#'                          $ Longitude: num  -72.9 -72.9 -72.9 -72.9 ...
+#'                         ---------------------------------------------------------------------------------
+#'    2) variables       A string listing the climate variables (as named by Daymet) to be indexed
+#'    3) daymetDirectory A string indicating the folder where Daymet files reside
+#'
+#' 
+#' @examples
+#' 
+#' \dontrun{
+#' indexLocalDaymetVariablesForObservedSites(record = masterData , variables = c('prcp', 'tmin', 'tmax'), daymetDirectory = '//IGSAGBEBWS-MJO7/projects/dataIn/environmental/climate/daymet/unzipped/Daily')
+#' }
 indexLocalDaymetVariablesForObservedSites <- function(record, variables, daymetDirectory){
   
   library(ncdf)
@@ -445,23 +443,25 @@ indexLocalDaymetVariablesForObservedSites <- function(record, variables, daymetD
   outRecord <- merge(record, daymet, by = c('site', 'year', 'dOY'), all.x = T, all.y = F, sort = F)
   
   return(outRecord)
-}# End function
-#=========================================================================================================
+}
 
 
-
-
-#=========================================================================================================
-# This function calculates the spatial average of the Daymet variables within a watershed.
-# It takes the following:
-#    1) The stream temperature record (Site names, latitude, longitude, year, and dOY columns)
-#    2) A string of variables to pull from Daymet
-#    3) A list of daymet tiles covered by the watersheds
-#    4) A master catchments shapefile
-#    5) A dataframe of the covariates for the catchments (FEATUREIDs source)
-#    6) A list of catchment delineations for the region
-# It returns the original dataframe with new columns for the Daymet variables.
-#=========================================================================================================
+#' @title indexUpstreamDaymetVariablesForObservedSites
+#'
+#' @description
+#' \code{indexUpstreamDaymetVariablesForObservedSites} calculates the spatial average of the Daymet variables within a watershed.
+#'
+#' @param record The stream temperature record (Site names, latitude, longitude, year, and dOY columns)
+#' @param variables A string of variables to pull from Daymet
+#' @param tiles A list of daymet tiles covered by the watersheds
+#' @param catchmentShapefile A master catchments shapefile
+#' @param covariateData A dataframe of the covariates for the catchments (FEATUREIDs source)
+#' @param delineatedCatchmentsList A list of catchment delineations for the region
+#' @param daymetDirectory Directory
+#' 
+#' @return Returns the original dataframe with new columns for the Daymet variables.
+#' @details
+#' This function calculates the spatial average of the Daymet variables within a watershed.
 indexUpstreamDaymetVariablesForObservedSites <- function(record, variables, tiles, catchmentShapefile, covariateData, delineatedCatchmentsList, daymetDirectory){
   
   library(ncdf)
@@ -643,9 +643,6 @@ indexUpstreamDaymetVariablesForObservedSites <- function(record, variables, tile
   return(fullRecord)
   
 }
-#=========================================================================================================
-
-
 
 
 

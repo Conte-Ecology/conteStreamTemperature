@@ -156,12 +156,19 @@ makeBiasMap <- function (d) {
 
 
 
-#======================================
-# Scale time series data (from Daymet):
-#======================================
-# This function takes a dataframe of time series data and lists of variables to either scale or log-scale.
 
-
+#' @title indexUpstreamDaymetVariablesForObservedSites
+#'
+#' @description
+#' \code{indexUpstreamDaymetVariablesForObservedSites} This function takes a dataframe of time series data and lists of variables to either scale or log-scale.
+#'
+#' @param dataFrame dataframe
+#' @param logVars somthing
+#' @param scaleVars something
+#' 
+#' @return Returns something
+#' @details
+#' This function takes a dataframe of time series data and lists of variables to either scale or log-scale.
 loggAndScaleDaymet <- function(dataFrame, logVars, scaleVars){
   
   # Don't use "scale" because it creates a data type with attributes that make is difficult to use predict
