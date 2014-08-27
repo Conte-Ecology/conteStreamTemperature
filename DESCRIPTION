@@ -1,4 +1,4 @@
-Package: streamTemperature
+Package: conteStreamTemperature
 Title: clean, prepare, and analyze stream temperature data
 Version: 0.1
 Authors@R: c(person("Daniel", "Hocking", role = c("aut", "cre"), email =

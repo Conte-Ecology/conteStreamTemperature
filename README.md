@@ -4,13 +4,13 @@ An example of how to use this package can be found in the vignettes...
 
 to run the vignettes...
 
-A full example where we use this package can be found on the Conte-Ecology GitHub package in the `streamTemperature_northeast` repository.
+A full example where we use this package can be found on the Conte-Ecology GitHub package in the `conteStreamTemperature_northeast` repository.
 
 To install and load this package you will need to have `RTools` installed and the R package `devtools` loaded. This package provides the `install_github` function so you can install our package directly from GitHub as shown below:
 
 ```
-install_github("streamTemperature", username = "Conte-Ecology")
-library(streamTemperature)
+install_github("conteStreamTemperature", username = "Conte-Ecology")
+library(conteStreamTemperature)
 ```
 
 This is the project folder for the stream temperature work underway at the USGS S.O. Conte Anadromous Fish Research Center in Turners Falls, MA.

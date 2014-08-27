@@ -8,4 +8,4 @@
 #' how to format the documentation.
 #'
 #' @docType package
-#' @name streamTemperature
+#' @name conteStreamTemperature
