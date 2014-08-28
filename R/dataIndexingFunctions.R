@@ -12,6 +12,7 @@
 #' @return Returns a dataframe with the site name, lat/lon, FEATUREID, and the select covariate values
 #' @details
 #' This function reads in stream temp timeseries and/or the respective covariate data for different data sources, joins them together, and outputs a dataframe.
+#' @export
 readStreamTempData <- function(timeSeries, covariates, dataSourceList, fieldListTS, fieldListCD, directory){
   for ( i in 1:length(dataSourceList)){
     
@@ -66,6 +67,7 @@ readStreamTempData <- function(timeSeries, covariates, dataSourceList, fieldList
 #' @return Returns a dataframe with the site name, lat/lon, FEATUREID, and the select covariate values
 #' @details
 #' This function indexes values from the master list of covariates for observed stream temperature sites.
+#' @export
 indexCovariateData <- function(record, masterCovariates, catchmentShapefile, projectionString, fields){
   start.time <- proc.time()[3]
   
@@ -123,6 +125,7 @@ indexCovariateData <- function(record, masterCovariates, catchmentShapefile, pro
 #   for that site changed.
 #' @details
 #' This function corrects the covariate data file after the site locations have been manually checked.
+#' @export
 correctCovariateData <- function(covariateData, siteChanges, LocalStats, UpstreamStats, impoundmentLayers){
   
   d <- covariateData
@@ -216,6 +219,7 @@ correctCovariateData <- function(covariateData, siteChanges, LocalStats, Upstrea
 #' @return Returns the Daymet tile that holds data for the coordinates given.
 #' @details
 #' This function indexes Daymet tiles by the latitude and longitude of a site.
+#' @export
 indexDaymetTileByLatLon <- function(SiteLat, SiteLon){
 
   Tile <- ifelse( SiteLat > 40 & SiteLat < 42 & SiteLon > -74 & SiteLon < -72, 11754, #**
@@ -259,6 +263,7 @@ indexDaymetTileByLatLon <- function(SiteLat, SiteLon){
 #' \dontrun{
 #' findNearestDaymetPoint(siteLat = 44.0 , siteLon = -72.5, dayLat = lat, dayLon = lon, currentTile = 11934)
 #' }
+#' @export
 findNearestDaymetPoint <- function(siteLat, siteLon, dayLat, dayLon, currentTile){
   
   library(sp)
@@ -318,6 +323,7 @@ findNearestDaymetPoint <- function(siteLat, siteLon, dayLat, dayLon, currentTile
 #' \dontrun{
 #' indexLocalDaymetVariablesForObservedSites(record = masterData , variables = c('prcp', 'tmin', 'tmax'), daymetDirectory = '//IGSAGBEBWS-MJO7/projects/dataIn/environmental/climate/daymet/unzipped/Daily')
 #' }
+#' @export
 indexLocalDaymetVariablesForObservedSites <- function(record, variables, daymetDirectory){
   
   library(ncdf)
@@ -457,6 +463,7 @@ indexLocalDaymetVariablesForObservedSites <- function(record, variables, daymetD
 #' @return Returns the original dataframe with new columns for the Daymet variables.
 #' @details
 #' This function calculates the spatial average of the Daymet variables within a watershed.
+#' @export
 indexUpstreamDaymetVariablesForObservedSites <- function(record, variables, tiles, catchmentShapefile, covariateData, delineatedCatchmentsList, daymetDirectory){
   
   library(ncdf)

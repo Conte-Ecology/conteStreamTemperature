@@ -6,6 +6,7 @@
 #' @details
 #' var: blah, blah, blah
 #' value: something, something
+#' @export
 riverLabeller <- function(var, value){
   value <- as.character(value)
   if (var=="site") { 
@@ -169,6 +170,7 @@ makeBiasMap <- function (d) {
 #' @return Returns something
 #' @details
 #' This function takes a dataframe of time series data and lists of variables to either scale or log-scale.
+#' @export
 loggAndScaleDaymet <- function(dataFrame, logVars, scaleVars){
   
   # Don't use "scale" because it creates a data type with attributes that make is difficult to use predict
