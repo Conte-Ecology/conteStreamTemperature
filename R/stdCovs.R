@@ -6,6 +6,7 @@
 #' @details
 #' x: data frame of covariates for prediction or validation
 #' y: original data frame of covariates used in the analysis
+#' @export
 stdCovs <- function(x, y, varNames){
   xStd <- as.data.frame(matrix(NA, dim(x)[1], length(varNames)))
   names(xStd) <- varNames

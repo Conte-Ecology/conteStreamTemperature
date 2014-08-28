@@ -1,6 +1,7 @@
 Package: conteStreamTemperature
 Title: clean, prepare, and analyze stream temperature data
 Version: 0.1
+Date: 2014-08-28
 Authors@R: c(person("Daniel", "Hocking", role = c("aut", "cre"), email =
     "dhocking@usgs.gov"), person("Kyle", "O'Neil", role = c("aut"), email =
     "koneil@usgs.gov"), person("Ben", "Letcher", role = c("aut"), email =
