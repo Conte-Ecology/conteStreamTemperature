@@ -45,14 +45,57 @@ readStreamTempData <- function(timeSeries, covariates, dataSourceList, fieldList
   
   # Prepare output
   ifelse(  exists('tS') &  exists ('cD'),  dataOut <- merge(tS, cD, by = 'site', all.x = T, all.F = F, sort = F), 
-           ifelse(  exists('tS') & !exists ('cD'),  dataOut <- tS,
-                    ifelse( !exists('tS') &  exists ('cD'),  dataOut <- cD, 
-                            print("'timeSeries' or 'covariates' must be TRUE."))))
+  ifelse(  exists('tS') & !exists ('cD'),  dataOut <- tS,
+  ifelse( !exists('tS') &  exists ('cD'),  dataOut <- cD, 
+  print("'timeSeries' or 'covariates' must be TRUE."))))
   
   # Output
   return(dataOut)
 }
 
+
+
+
+
+#' @title assignCatchments
+#'
+#' @description
+#' \code{assignCatchments} Assigns a catchment to a site with a set of lat/lon points.
+#'
+#' @param sites dataframe containing 3 columns in specified order: 1)SiteID 2)Longitude 3)Latitude
+#' @param catchmentShapefile SpatialPolygonsDataframe of the catchment shapefile over which the points will be matched
+#' @param catchmentID a character vector of column name describing the catchment identifier in the shapefile (e.g. "FEATUREID" for NHDplusV2)
+#' @param projectionString a CRS string of the spatial data projection of the shapefile and site coordinates
+#' @return Returns the input dataframe with the catchment ID appended (column 4)
+#' @details
+#' This function uses a spatial overlay to assign catchment IDs to sites with associated lat/lon points.
+#' If a point does not match any catchment, NA is returned
+#' @export
+  
+assignCatchments <- function(sites, catchmentShapefile, catchmentID, projectionString){
+  
+  require(maptools)
+  require(sp)
+  
+  # Save original names
+  siteCol <- names(sites)[1]
+  LonCol  <- names(sites)[2]
+  LatCol  <- names(sites)[3]
+  
+  # Assign names for processing
+  names(sites) <- c('siteID', 'Longitude', 'Latitude')
+  
+  # Convert lat/lon to format for overlay(s.p.d.f.)
+  points <- SpatialPointsDataFrame(as.matrix(sites[,c('Longitude', 'Latitude')]), sites, proj4string = projectionString)
+  
+  # Overlay the points and return catchments to dataframe
+  sitesOut <- data.frame(points@data, over(points,catchmentShapefile)[,c(catchmentID)])
+  
+  names(sitesOut) <- c(siteCol, LonCol, LatCol, catchmentID)
+
+  # Return the covariates list
+  return(sitesOut)
+}
 
 #' @title indexCovariateData
 #'
@@ -222,7 +265,9 @@ correctCovariateData <- function(covariateData, siteChanges, LocalStats, Upstrea
 #' @export
 indexDaymetTileByLatLon <- function(SiteLat, SiteLon){
 
-  Tile <- ifelse( SiteLat > 40 & SiteLat < 42 & SiteLon > -74 & SiteLon < -72, 11754, #**
+  Tile <- ifelse( SiteLat > 38 & SiteLat < 40 & SiteLon > -80 & SiteLon < -78, 11571,
+          ifelse( SiteLat > 36 & SiteLat < 38 & SiteLon > -80 & SiteLon < -78, 11391,
+          ifelse( SiteLat > 40 & SiteLat < 42 & SiteLon > -74 & SiteLon < -72, 11754, #**
           ifelse( SiteLat > 40 & SiteLat < 42 & SiteLon > -72 & SiteLon < -70, 11755, #**
           ifelse( SiteLat > 40 & SiteLat < 42 & SiteLon > -70 & SiteLon < -68, 11756, #**   
           ifelse( SiteLat > 42 & SiteLat < 44 & SiteLon > -74 & SiteLon < -72, 11934, #**
