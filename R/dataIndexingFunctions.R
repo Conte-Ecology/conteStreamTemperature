@@ -71,7 +71,6 @@ readStreamTempData <- function(timeSeries, covariates, dataSourceList, fieldList
 #' This function uses a spatial overlay to assign catchment IDs to sites with associated lat/lon points.
 #' If a point does not match any catchment, NA is returned
 #' @export
-  
 assignCatchments <- function(sites, catchmentShapefile, catchmentID, projectionString){
   
   require(maptools)
@@ -254,7 +253,7 @@ correctCovariateData <- function(covariateData, siteChanges, LocalStats, Upstrea
 #' @title indexDaymetTileByLatLon
 #'
 #' @description
-#' \code{indexDaymetTileByLatLon} This function indexes Daymet tiles by the latitude and longitude of a site. sites
+#' \code{indexDaymetTileByLatLon} This function indexes Daymet tiles by the latitude and longitude of a site.
 #'
 #' @param SiteLat Site latitude
 #' @param SiteLon Site longitude
@@ -267,14 +266,14 @@ indexDaymetTileByLatLon <- function(SiteLat, SiteLon){
 
   Tile <- ifelse( SiteLat > 38 & SiteLat < 40 & SiteLon > -80 & SiteLon < -78, 11571,
           ifelse( SiteLat > 36 & SiteLat < 38 & SiteLon > -80 & SiteLon < -78, 11391,
-          ifelse( SiteLat > 40 & SiteLat < 42 & SiteLon > -74 & SiteLon < -72, 11754, #**
-          ifelse( SiteLat > 40 & SiteLat < 42 & SiteLon > -72 & SiteLon < -70, 11755, #**
-          ifelse( SiteLat > 40 & SiteLat < 42 & SiteLon > -70 & SiteLon < -68, 11756, #**   
-          ifelse( SiteLat > 42 & SiteLat < 44 & SiteLon > -74 & SiteLon < -72, 11934, #**
-          ifelse( SiteLat > 42 & SiteLat < 44 & SiteLon > -72 & SiteLon < -70, 11935, #**
+          ifelse( SiteLat > 40 & SiteLat < 42 & SiteLon > -74 & SiteLon < -72, 11754,
+          ifelse( SiteLat > 40 & SiteLat < 42 & SiteLon > -72 & SiteLon < -70, 11755,
+          ifelse( SiteLat > 40 & SiteLat < 42 & SiteLon > -70 & SiteLon < -68, 11756,
+          ifelse( SiteLat > 42 & SiteLat < 44 & SiteLon > -74 & SiteLon < -72, 11934,
+          ifelse( SiteLat > 42 & SiteLat < 44 & SiteLon > -72 & SiteLon < -70, 11935,
           ifelse( SiteLat > 42 & SiteLat < 44 & SiteLon > -70 & SiteLon < -68, 11936,
-          ifelse( SiteLat > 44 & SiteLat < 46 & SiteLon > -74 & SiteLon < -72, 12114, #**      
-          ifelse( SiteLat > 44 & SiteLat < 46 & SiteLon > -72 & SiteLon < -70, 12115, #** 
+          ifelse( SiteLat > 44 & SiteLat < 46 & SiteLon > -74 & SiteLon < -72, 12114,  
+          ifelse( SiteLat > 44 & SiteLat < 46 & SiteLon > -72 & SiteLon < -70, 12115,
           ifelse( SiteLat > 44 & SiteLat < 46 & SiteLon > -70 & SiteLon < -68, 12116,
           ifelse( SiteLat > 44 & SiteLat < 46 & SiteLon > -68 & SiteLon < -66, 12117,
           ifelse( SiteLat > 46 & SiteLat < 48 & SiteLon > -72 & SiteLon < -70, 12295,     
@@ -283,8 +282,6 @@ indexDaymetTileByLatLon <- function(SiteLat, SiteLon){
           "Tile Error")))))))))))))))
 
   return(Tile)
-
-# ** Explicitly checked with mapping software (ArcGIS).
 }
 
 
