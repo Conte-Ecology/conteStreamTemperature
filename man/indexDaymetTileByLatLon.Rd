@@ -14,7 +14,7 @@ indexDaymetTileByLatLon(SiteLat, SiteLon)
 Returns the Daymet tile that holds data for the coordinates given.
 }
 \description{
-\code{indexDaymetTileByLatLon} This function indexes Daymet tiles by the latitude and longitude of a site. sites
+\code{indexDaymetTileByLatLon} This function indexes Daymet tiles by the latitude and longitude of a site.
 }
 \details{
 This function indexes Daymet tiles by the latitude and longitude of a site.
