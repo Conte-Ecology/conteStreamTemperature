@@ -280,7 +280,7 @@ indexDaymetTileByLatLon <- function(SiteLat, SiteLon){
           ifelse( SiteLat > 46 & SiteLat < 48 & SiteLon > -72 & SiteLon < -70, 12295,     
           ifelse( SiteLat > 46 & SiteLat < 48 & SiteLon > -70 & SiteLon < -68, 12296,     
           ifelse( SiteLat > 46 & SiteLat < 48 & SiteLon > -68 & SiteLon < -66, 12297,   
-          "Tile Error")))))))))))))
+          "Tile Error")))))))))))))))
 
   return(Tile)
 
