@@ -21,7 +21,7 @@
 #' mcmc.out <- modelRegionalTemp(tempDataSyncS, n.burn = 1000, n.it = 1000, n.thin = 3, n.chains = 3)
 #' }
 #' @export
-modelRegionalTemp <- function(data = tempDataSyncS, params = c("sigma", "B.0", "B.site", "rho.B.site", "mu.site", "sigma.b.site", "B.year", "rho.B.year", "mu.year", "sigma.b.year"), n.burn = 5000, n.it = 3000, n.thin = 3, n.chains = 3, coda = FALSE) {
+modelRegionalTemp <- function(data = tempDataSyncS, params = c("sigma", "B.0", "B.site", "rho.B.site", "mu.site", "sigma.b.site", "B.year", "rho.B.year", "mu.year", "sigma.b.year"), n.burn = 5000, n.it = 3000, n.thin = 3, n.chains = 3, coda = FALSE, runParallel = TRUE) {
 #  temp.model <- function(){
   sink("code/modelRegionalTemp.txt")
   cat("
@@ -190,39 +190,60 @@ model{
 #filename <- file.path(tempdir(), "tempmodel.txt")
 #write.model(temp.model, filename)
 
-if(coda) {
-  CL <- makeCluster(n.chains)
-  clusterExport(cl=CL, list("data", "inits", "params", "K", "J", "Ti", "L", "n", "W.site", "W.year", "X.site", "X.year", "n.burn", "n.it", "n.thin"), envir = environment())
-  clusterSetRNGStream(cl=CL, iseed = 2345642)
+if(runParallel) {
+  if(coda) {
+    CL <- makeCluster(n.chains)
+    clusterExport(cl=CL, list("data", "inits", "params", "K", "J", "Ti", "L", "n", "W.site", "W.year", "X.site", "X.year", "n.burn", "n.it", "n.thin"), envir = environment())
+    clusterSetRNGStream(cl=CL, iseed = 2345642)
+    
+    system.time(out <- clusterEvalQ(CL, {
+      library(rjags)
+      load.module('glm')
+      jm <- jags.model("code/modelRegionalTemp.txt", data, inits, n.adapt = n.burn, n.chains=1)
+      fm <- coda.samples(jm, params, n.iter = n.it, thin = n.thin)
+      return(as.mcmc(fm))
+    }))
+    
+    M3 <- mcmc.list(out)
+    
+    stopCluster(CL)
+    return(M3)
+    
+  } else {
+    CL <- makeCluster(n.chains)
+    clusterExport(cl=CL, list("data", "inits", "params", "K", "J", "Ti", "L", "n", "W.site", "W.year", "X.site", "X.year", "n.burn", "n.it", "n.thin"), envir = environment())
+    clusterSetRNGStream(cl=CL, iseed = 2345642)
+    
+    system.time(out <- clusterEvalQ(CL, {
+      library(rjags)
+      load.module('glm')
+      jm <- jags.model("code/modelRegionalTemp.txt", data, inits, n.adapt = n.burn, n.chains=1)
+      fm <- jags.samples(jm, params, n.iter = n.it, thin = n.thin)
+      return(fm)
+    }))
+    
+    M3 <- mcmc.list(out)
+    
+    stopCluster(CL)
+    return(M3)
+  }
   
-  system.time(out <- clusterEvalQ(CL, {
-    library(rjags)
-    load.module('glm')
-    jm <- jags.model("code/modelRegionalTemp.txt", data, inits, n.adapt = n.burn, n.chains=1)
-    fm <- coda.samples(jm, params, n.iter = n.it, thin = n.thin)
-    return(as.mcmc(fm))
-  }))
   
-  M3 <- mcmc.list(out)
 } else {
-  CL <- makeCluster(n.chains)
-  clusterExport(cl=CL, list("data", "inits", "params", "K", "J", "Ti", "L", "n", "W.site", "W.year", "X.site", "X.year", "n.burn", "n.it", "n.thin"), envir = environment())
-  clusterSetRNGStream(cl=CL, iseed = 2345642)
-  
-  system.time(out <- clusterEvalQ(CL, {
+  if(coda) {
     library(rjags)
     load.module('glm')
-    jm <- jags.model("code/modelRegionalTemp.txt", data, inits, n.adapt = n.burn, n.chains=1)
+    jm <- jags.model("code/modelRegionalTemp.txt", data, inits, n.adapt = n.burn, n.chains=n.chains)
+    fm <- coda.samples(jm, params, n.iter = n.it, thin = n.thin)
+    return(fm)
+  } else {
+    library(rjags)
+    load.module('glm')
+    jm <- jags.model("code/modelRegionalTemp.txt", data, inits, n.adapt = n.burn, n.chains=n.chains)
     fm <- jags.samples(jm, params, n.iter = n.it, thin = n.thin)
     return(fm)
-  }))
-  
-  M3 <- mcmc.list(out)
+  }
 }
-
-  stopCluster(CL)
-  
-  return(M3)
 }
 
 

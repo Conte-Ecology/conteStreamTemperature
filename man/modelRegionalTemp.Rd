@@ -6,7 +6,7 @@
 modelRegionalTemp(data = tempDataSyncS, params = c("sigma", "B.0", "B.site",
   "rho.B.site", "mu.site", "sigma.b.site", "B.year", "rho.B.year", "mu.year",
   "sigma.b.year"), n.burn = 5000, n.it = 3000, n.thin = 3, n.chains = 3,
-  coda = FALSE)
+  coda = FALSE, runParallel = TRUE)
 }
 \arguments{
 \item{data}{dataframe created in the 3-statModelPrep.Rmd script}
