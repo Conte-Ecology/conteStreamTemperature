@@ -23,6 +23,7 @@
 #' @export
 modelRegionalTemp <- function(data = tempDataSyncS, params = c("sigma", "B.0", "B.site", "rho.B.site", "mu.site", "sigma.b.site", "B.year", "rho.B.year", "mu.year", "sigma.b.year"), n.burn = 5000, n.it = 3000, n.thin = 3, n.chains = 3, coda = FALSE, runParallel = TRUE) {
 #  temp.model <- function(){
+{
   sink("code/modelRegionalTemp.txt")
   cat("
 model{
@@ -83,6 +84,7 @@ model{
   }
 ",fill = TRUE)
   sink()
+} # sink needs to be wrapped in expression for knitr to work
   
   # Fixed effects
   #variables.fixed <- c("intercept",  
