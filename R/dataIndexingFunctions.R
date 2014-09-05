@@ -54,7 +54,6 @@ readStreamTempData <- function(timeSeries, covariates, dataSourceList, fieldList
 }
 
 
-
 #' @title assignCatchments
 #'
 #' @description
@@ -66,8 +65,7 @@ readStreamTempData <- function(timeSeries, covariates, dataSourceList, fieldList
 #' @param projectionString a CRS string of the spatial data projection of the shapefile and site coordinates
 #' @return Returns the input dataframe with the catchment ID appended (column 4)
 #' @details
-#' This function uses a spatial overlay to assign catchment IDs to sites with associated lat/lon points.
-#' If a point does not match any catchment, NA is returned
+#' This function uses a spatial overlay to assign catchment IDs to sites with associated lat/lon points. If a point does not match any catchment, NA is returned.
 #' @export
 assignCatchments <- function(sites, catchmentShapefile, catchmentID, projectionString){
   

@@ -3,50 +3,34 @@
 \alias{indexCovariateData}
 \title{indexCovariateData}
 \usage{
-indexCovariateData(record, masterCovariates, catchmentShapefile,
-  projectionString, fields)
-
-indexCovariateData(record, masterCovariates, catchmentShapefile,
-  projectionString, fields)
+indexCovariateData(method = "coordinates", sites, masterCovariates,
+  fields = NULL, catchmentID, catchmentShapefile = NULL,
+  projectionString = NULL)
 }
 \arguments{
-\item{masterCovariates}{a dataframe of the covariates for the catchments IDs}
-
-\item{catchmentShapefile}{required if method = "coordinates". SpatialPolygonsDataframe of the catchment shapefile over which the points will be matched}
-
-\item{projectionString}{required if method = "coordinates". a CRS string of the spatial data projection of the shapefile and site coordinates}
-
-\item{fields}{a string of variables to pull from the covariates list. Deafault = ALL}
-
 \item{method}{a character vector describing the indexing method. Either "catchments" or "coordinates". Default is "catchments".}
 
 \item{sites}{dataframe with the indexing information. If method = "catchments" then sites = a vector of catchment IDs as described by the "catchmentID" parameter. If method = "coordinates" then a dataframe containing 3 columns in specified order: 1)SiteID 2)Longitude 3)Latitude.}
 
+\item{masterCovariates}{a dataframe of the covariates for the catchments IDs}
+
+\item{fields}{a string of variables to pull from the covariates list. Deafault = ALL}
+
 \item{catchmentID}{a character vector of column name describing the catchment identifier in the shapefile (e.g. "FEATUREID" for NHDplusV2)}
+
+\item{catchmentShapefile}{required if method = "coordinates". SpatialPolygonsDataframe of the catchment shapefile over which the points will be matched}
+
+\item{projectionString}{required if method = "coordinates". a CRS string of the spatial data projection of the shapefile and site coordinates}
 }
 \value{
 Returns a dataframe with the input data and the select covariate value fields
 }
 \description{
 \code{indexCovariateData} Indexes values from the master list of covariates given either a list of catchments or a list of latitude and longitude values
-
-\code{indexCovariateData} returns something of great importance
 }
 \details{
 This function indexes values from the master list of covariates for observed stream temperature sites.
 If "Latitude" or "Longitude" exist within the "fields" and the "coordinates" method is used then the indexed values will be renamed to "catchmentLatitude" and "catchmentLongitude"
 If fields are indicated that are not in the master covariate object, then they are returned as all NA.
-
-var: blah, blah, blah
-value: something, something
-This function indexes values from the master list of covariates for observed stream temperature sites.
-It takes the following:
-   1) The stream temperature record (unique site ID, latitude, longitude, columns)
-   2) A dataframe of the covariates for the catchments (FEATUREIDs source)
-   3) A master catchments shapefile
-   4) A CRS string of the spatial data projection
-   5) A string of variables to pull from the covariates list
-
-It returns a dataframe with the site name, lat/lon, FEATUREID, and the select covariate values.
 }
 
