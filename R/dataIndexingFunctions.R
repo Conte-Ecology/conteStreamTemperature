@@ -54,9 +54,6 @@ readStreamTempData <- function(timeSeries, covariates, dataSourceList, fieldList
 }
 
 
-
-
-
 #' @title assignCatchments
 #'
 #' @description
@@ -68,8 +65,7 @@ readStreamTempData <- function(timeSeries, covariates, dataSourceList, fieldList
 #' @param projectionString a CRS string of the spatial data projection of the shapefile and site coordinates
 #' @return Returns the input dataframe with the catchment ID appended (column 4)
 #' @details
-#' This function uses a spatial overlay to assign catchment IDs to sites with associated lat/lon points.
-#' If a point does not match any catchment, NA is returned
+#' This function uses a spatial overlay to assign catchment IDs to sites with associated lat/lon points. If a point does not match any catchment, NA is returned.
 #' @export
 assignCatchments <- function(sites, catchmentShapefile, catchmentID, projectionString){
   
@@ -99,155 +95,69 @@ assignCatchments <- function(sites, catchmentShapefile, catchmentID, projectionS
 #' @title indexCovariateData
 #'
 #' @description
-#' \code{indexCovariateData} Indexes values from the master list of covariates for observed stream temperature sites
+#' \code{indexCovariateData} Indexes values from the master list of covariates given either a list of catchments or a list of latitude and longitude values
 #'
-#' @param record The stream temperature record (unique site ID, latitude, and longitude columns )
-#' @param masterCovariates A dataframe of the covariates for the catchments (FEATUREIDs source)
-#' @param catchmentShapefile A master catchments shapefile
-#' @param projectionString A CRS string of the spatial data projection
-#' @param fields A string of variables to pull from the covariates list
-#' @return Returns a dataframe with the site name, lat/lon, FEATUREID, and the select covariate values
+#' @param method a character vector describing the indexing method. Either "catchments" or "coordinates". Default is "catchments".
+#' @param sites dataframe with the indexing information. If method = "catchments" then sites = a vector of catchment IDs as described by the "catchmentID" parameter. If method = "coordinates" then a dataframe containing 3 columns in specified order: 1)SiteID 2)Longitude 3)Latitude.
+#' @param masterCovariates a dataframe of the covariates for the catchments IDs
+#' @param fields a string of variables to pull from the covariates list. Deafault = ALL
+#' @param catchmentID a character vector of column name describing the catchment identifier in the shapefile (e.g. "FEATUREID" for NHDplusV2)
+#' @param catchmentShapefile required if method = "coordinates". SpatialPolygonsDataframe of the catchment shapefile over which the points will be matched
+#' @param projectionString required if method = "coordinates". a CRS string of the spatial data projection of the shapefile and site coordinates
+#' @return Returns a dataframe with the input data and the select covariate value fields
 #' @details
 #' This function indexes values from the master list of covariates for observed stream temperature sites.
+#' If "Latitude" or "Longitude" exist within the "fields" and the "coordinates" method is used then the indexed values will be renamed to "catchmentLatitude" and "catchmentLongitude"
+#' If fields are indicated that are not in the master covariate object, then they are returned as all NA.
 #' @export
-indexCovariateData <- function(record, masterCovariates, catchmentShapefile, projectionString, fields){
-  start.time <- proc.time()[3]
+indexCovariateData <- function(method = "coordinates", sites, masterCovariates, fields = NULL,  catchmentID , catchmentShapefile = NULL, projectionString = NULL){
   
-  # Select fields
-  selectUpstreamStats <- UpstreamStats[,names(masterCovariates) %in% fields]
+  # fields default
+  if( is.null(fields) ) {fields <- names(masterCovariates) }
   
-  # Generate a list of sites
-  sites <- unique(masterData[,c('site', 'Latitude', 'Longitude')])
+  # "coordinates" method assigns catchment IDs
+  if( method == 'coordinates' ) { 
+    
+    if (is.null(catchmentShapefile)) {print("Error: missing catchmentShapefile")}
+    if (is.null(projectionString))   {print("Error: missing projectionString")}
+    
+    sites <- assignCatchments(sites, catchmentShapefile, catchmentID, projectionString)
   
-  # Loop through all sites in the record
-  for ( i in 1:nrow(sites)){  
-    
-    # Select a site
-    curSite <- sites[i,]
-    
-    # Make the site a SpatialPoints object
-    point <- SpatialPoints(matrix(data=c(curSite$Longitude,curSite$Latitude),ncol=2,byrow=T),  proj4string=CRS(proj4.NHD))
-    
-    # Select the catchment that contains the point
-    featureID <- over(point,catchmentShapefile)$FEATUREID
-    
-    # Index the covariate data and join it to the site info
-    tempCovs <- data.frame( curSite, selectUpstreamStats[selectUpstreamStats$FEATUREID == featureID, names(selectUpstreamStats) %in% fields])
-    
-    # Store data from each iteration
-    if ( i == 1 ) { newCovs <- tempCovs} else( newCovs <- rbind(newCovs, tempCovs) )
-    
-    # Track progress
-    print(paste0(round(i/nrow(sites), digits = 3)*100, '% done.'))
+    featureIDs <- sites[,4]
   }
   
-  newCovs$site <- paste(newCovs$site)
+  # "catchments" method simply lists catchments
+  if( method == 'catchments' ) { featureIDs <- sites }
+  
+  # Select fields
+  selectUpstreamStats <- masterCovariates[masterCovariates[,names(masterCovariates)== catchmentID] %in% featureIDs, names(masterCovariates) %in% fields]  
+  
+  if(!all(fields %in% names(masterCovariates))){
+    
+    empty <- fields[!fields %in% names(masterCovariates)]
+    emptyStats <- data.frame(matrix(data = NA, ncol = length(empty), nrow = nrow(selectUpstreamStats)))
+    names(emptyStats) <- empty
+  
+    selectUpstreamStats <- data.frame(selectUpstreamStats, emptyStats)
+    
+    print(paste("Warning: Some fields do not exist in the master list. Returning NA in the following columns:", empty))
+  }
+  
+  # If the "coordinates" method is used then rename the catchment centroid coordinates:
+  if( method == 'coordinates' ) {
+    if( 'Latitude'  %in% names(selectUpstreamStats) ) { names(selectUpstreamStats)[names(selectUpstreamStats) == 'Latitude' ] <- 'catchmentLatitude'  }
+    if( 'Longitude' %in% names(selectUpstreamStats) ) { names(selectUpstreamStats)[names(selectUpstreamStats) == 'Longitude'] <- 'catchmentLongitude' }    
+  
+    newCovs <- merge(sites, selectUpstreamStats, by = catchmentID, all.x = T, all.y = F, sort = F)
+  }
+    
+  # If "catchments" method is used then just retrun the indexed covariates.
+  if( method == 'catchments') {newCovs <- selectUpstreamStats}
   
   # Return the covariates list
   return(newCovs)
-  
-  # How long it takes to run
-  end.time   <- proc.time()[3]
-  print(paste0((end.time-start.time)/3600, " hours"))
 }
 
-
-#' @title correctCovariateData
-#'
-#' @description
-#' \code{correctCovariateData} corrects the covariate data file after the site locations have been manually checked.
-#'
-#' @param covariateData The original covariate data file
-#' @param siteChanges The "siteChanges" CSV file
-#' @param LocalStats The master dataframes of both local and upstream covariate statistics
-#' @param UpstreamStats from localstats?????
-#' @param impoundmentLayers A list of layers that get NAs assigned for local catchment values. (This will hopefully change with an updated layer)
-#' 
-#' @return the same covariate dataframe with corrected values and a column indicating whether or not values
-#   for that site changed.
-#' @details
-#' This function corrects the covariate data file after the site locations have been manually checked.
-#' @export
-correctCovariateData <- function(covariateData, siteChanges, LocalStats, UpstreamStats, impoundmentLayers){
-  
-  d <- covariateData
-  s <- siteChanges
-  
-  # Correct the factor problem
-  s$site <- as.character(s$site)
-  d$site <- as.character(d$site)
-  
-  # Select sites that get changed
-  s1 <- s[which(s$correctFeatureID > 1 | s$localCatchment > 0 ),]
-  
-  # Edit the "correctFeatureID" column to contain the correct FEATUREIDs (both changes and ones that will stay the same).
-  s1$correctFeatureID[s1$correctFeatureID == 1] <- s1$currentFeatureID[s1$correctFeatureID == 1]
-  
-  # Don't want to replace Lat/Lon of the site with Lat/Lon of catchment centroid, so remove these from the master list
-  up  <- UpstreamStats[, - which(names(UpstreamStats) %in% c('Latitude', 'Longitude'))]
-  loc <- LocalStats   [, - which(names(LocalStats) %in% c('Latitude', 'Longitude'))]
-  
-  # Remove covariate data for sites that will be replaced
-  d1 <- d[!(d$site %in% s1$site), ]
-  
-  #Replace sites that need new Upstream covariate data:
-  #====================================================
-  
-  # Sites that get upstream data:
-  # -----------------------------
-  # First, check if any sites get upstream data
-  if(length(which(s1$localCatchment == 0)) > 0 ){
-  
-    nU <- s1[s1$localCatchment == 0, c('site', 'correctFeatureID')]
-    colnames(nU) <- c('site', 'FEATUREID')
-    nU1 <- merge(nU, d[,c('site', 'Latitude', 'Longitude')], by = 'site', all.x = T, sort = F)
-    
-    # Merge in new covariate data
-    nU2 <- merge(nU1, up, by = 'FEATUREID', all.x = T, sort = F)
-    
-    # Remove unused columns
-    nU3 <- nU2[,names(nU2) %in% names(d1)]
-  }
-  
-  # Sites that get local data:
-  # --------------------------
-  # First, check if any sites get local data
-  if(length(which(s1$localCatchment == 1)) > 0 ){
-  
-    nL <- s1[s1$localCatchment == 1, c('site', 'correctFeatureID')]
-    colnames(nL) <- c('site', 'FEATUREID')
-    nL1 <- merge(nL, d[,c('site', 'Latitude', 'Longitude')], by = 'site', all.x = T, sort = F)
-    
-    # Merge in new covariate data
-    nL2 <- merge(nL1, loc, by = 'FEATUREID', all.x = T, sort = F)
-    
-    # Remove unused columns
-    nL3 <- nL2[,names(nL2) %in% names(d1)]
-    
-    # Replace local stats for impoundments with NAs because these values are not applicable to the local catchments (they are only used for upstream calculation)
-    nL3[, names(nL3) %in% impoundmentLayers] <- NA
-  } 
-  
-  # Join new data together:
-  # -----------------------
-  ifelse(exists("nU3") & exists("nL3"), newData <- rbind(nU3, nL3),
-  ifelse(exists("nU3") & !exists("nL3"), newData <- nU3,
-  ifelse(!exists("nU3") & exists("nL3"), newData <- nL3, 
-                noSites <- "Y")))
-  
-  if( exists("noSites") ) { print( "There are no sites to replace.")}
-  
-  if( !exists("noSites")){
-    # Add a column so we know which sites have had their data changed
-    newData$locationChange <- 'Y'
-    d1$locationChange <- 'N'
-    
-    # Join new to existing keeper data
-    dataOut <- rbind(d1, newData)
-    
-    return(dataOut)} else( return(covariateData))
-  
-}
 
 
 #' @title indexDaymetTileByLatLon
@@ -308,7 +218,7 @@ indexDaymetTileByLatLon <- function(SiteLat, SiteLon){
 #' @export
 findNearestDaymetPoint <- function(siteLat, siteLon, dayLat, dayLon, currentTile){
   
-  library(sp)
+  require(sp)
   
   # Calculate distances between site and Daymet point
   coords <- cbind( as.vector(dayLon), as.vector(dayLat))
@@ -332,50 +242,48 @@ findNearestDaymetPoint <- function(siteLat, siteLon, dayLat, dayLon, currentTile
 }
 
 
-#' @title indexLocalDaymetVariablesForObservedSites
+#' @title indexLocalDaymetVariables
 #'
 #' @description
 #' \code{indexLocalDaymetVariablesForObservedSites} takes a period of record for a location and returns the corresponding time series of climate data from Daymet. This is done by indexing the nearest Daymet point to the site location.
 #'
-#' @param record dataframe indicating the period of record ( limited to 1980 - 2013) over which to pull climate data.
-#' @param variables A string listing the climate variables (as named by Daymet) to be indexed
-#' @param daymetDirectory string indicating the folder where Daymet files reside
+#' @param record dataframe indicating the period of record ( limited to 1980 - 2013) over which to pull climate data. Dataframe columns must be in the following order: 1)Site ID 2)Year 3)Day of Year 4)Longitude 5)Latitude
+#' @param variables character string listing the climate variables (as named by Daymet) to be indexed
+#' @param daymetDirectory character string indicating the folder where Daymet files reside
 #' 
-#' @return Returns the record with added columns for Daymet variable records.
+#' @return Returns the record with added columns for specified Daymet variable records.
 #' @details
 #' This function takes a period of record for a location and returns the corresponding time series of climate data from Daymet. This is done by indexing the nearest Daymet point to the site location.
-#' 
-#' Arguments:
-#'    1) record          A dataframe indicating the period of record ( limited to 1980 - 2013) over which to 
-#'                         pull climate data. Minimum dataframe column requirements and format:
-#'                         ---------------------------------------------------------------------------------
-#'                         'data.frame':  3228940 obs. of  5 variables:
-#'                          $ site     : chr  "MADEP_W1466_M1" "MADEP_W1466_M1" "MADEP_W1466_M1" ...
-#'                          $ year     : num  1980 1980 1980 1980 1980 1980 1980 1980 1980 ...
-#'                          $ dOY      : num  1 2 3 4 5 6 7 8 9 ...
-#'                          $ Latitude : num  42.5 42.5 42.5 42.5 ...
-#'                          $ Longitude: num  -72.9 -72.9 -72.9 -72.9 ...
-#'                         ---------------------------------------------------------------------------------
-#'    2) variables       A string listing the climate variables (as named by Daymet) to be indexed
-#'    3) daymetDirectory A string indicating the folder where Daymet files reside
-#'
+#' Input names for "record" can vary as long as order is correct. Original names will be included in output.
 #' 
 #' @examples
 #' 
 #' \dontrun{
-#' indexLocalDaymetVariablesForObservedSites(record = masterData , variables = c('prcp', 'tmin', 'tmax'), daymetDirectory = '//IGSAGBEBWS-MJO7/projects/dataIn/environmental/climate/daymet/unzipped/Daily')
+#' indexLocalDaymetVariables(record = masterData , variables = c('prcp', 'tmin', 'tmax'), daymetDirectory = '//IGSAGBEBWS-MJO7/projects/dataIn/environmental/climate/daymet/unzipped/Daily')
 #' }
 #' @export
-indexLocalDaymetVariablesForObservedSites <- function(record, variables, daymetDirectory){
+indexLocalDaymetVariables <- function(record, variables, daymetDirectory){
   
-  library(ncdf)
-  library(sp)
+  require(ncdf)
+  require(sp)
+  
+  # Save original names
+  siteCol <- names(record)[1]
+  yearCol <- names(record)[2]
+  dOYCol  <- names(record)[3]
+  LonCol  <- names(record)[4]
+  LatCol  <- names(record)[5]
+  
+  names(record) <- c('site', 'year', 'dOY', 'Longitude', 'Latitude')
   
   # Add tile assignments
   record$tile <- indexDaymetTileByLatLon(record$Latitude, record$Longitude)
   
   # Generate tile list
   tiles <- unique(record$tile)
+  
+  # In case this object exists
+  if( exists("daymet") ) { rm(daymet) }
   
   # Tile loop
   for (tile in tiles){
@@ -385,8 +293,8 @@ indexLocalDaymetVariablesForObservedSites <- function(record, variables, daymetD
     
     # Read in a sample NetCDF of the tile to determine site positions within the Daymet array
     # ---------------------------------------------------------------------------------------
-    # Open NetCDF
-    locNCDF <- open.ncdf(paste0(daymetDirectory, tile, '_1980/prcp.nc'))    #netcdf
+    # Open NetCDF    
+    locNCDF <- open.ncdf(file.path(daymetDirectory, paste0(tile, '_1980/prcp.nc')))    #netcdf
     
     #Dimension limits of each of the variables we'll use:
     start1 = c(1,1)
@@ -439,9 +347,9 @@ indexLocalDaymetVariablesForObservedSites <- function(record, variables, daymetD
       # Varialble loop
       for (variable in variables){
         
-        # Open the NetCDF of the current tile, year, and variable
-        NCDF <- open.ncdf(paste0(daymetDirectory, tile, '_', year,'/', variable, '.nc'))    #netcdf
-        
+        # Open the NetCDF of the current tile, year, and variable        
+        NCDF <- open.ncdf( file.path(daymetDirectory, paste0(tile, '_', year), paste0(variable, '.nc') ) )   #netcdf
+                
         # Dimension limits of each of the objects used
         start1 = c(1,1)
         YDcount  <- NCDF$var$yearday$varsize
@@ -480,25 +388,33 @@ indexLocalDaymetVariablesForObservedSites <- function(record, variables, daymetD
     
     rm(tileDaymet); gc()
     
-    print( (proc.time()[3] - start.time)/3600 )
   }# End tile loop
   
   outRecord <- merge(record, daymet, by = c('site', 'year', 'dOY'), all.x = T, all.y = F, sort = F)
+  
+  # Rename output
+  names(outRecord)[names(outRecord) == 'site']      <- siteCol
+  names(outRecord)[names(outRecord) == 'year']      <- yearCol
+  names(outRecord)[names(outRecord) == 'dOY']       <- dOYCol
+  names(outRecord)[names(outRecord) == 'Longitude'] <- LonCol
+  names(outRecord)[names(outRecord) == 'Latitude']  <- LatCol
+  
+  # Remove "tile" column
+  outRecord <- outRecord[,-which(names(outRecord) == "tile")]
   
   return(outRecord)
 }
 
 
-#' @title indexUpstreamDaymetVariablesForObservedSites
+#' @title indexUpstreamDaymetVariablesByCatchment
 #'
 #' @description
-#' \code{indexUpstreamDaymetVariablesForObservedSites} calculates the spatial average of the Daymet variables within a watershed.
+#' \code{indexUpstreamDaymetVariablesByCatchment} calculates the spatial average of the Daymet variables within a watershed.
 #'
-#' @param record The stream temperature record (Site names, latitude, longitude, year, and dOY columns)
-#' @param variables A string of variables to pull from Daymet
-#' @param tiles A list of daymet tiles covered by the watersheds
-#' @param catchmentShapefile A master catchments shapefile
-#' @param covariateData A dataframe of the covariates for the catchments (FEATUREIDs source)
+#' @param record dataframe indicating the period of record (limited to 1980 - 2013) over which to pull climate data. Columns must be in the following order: 1)Catchment ID 2)Year 3)Day of Year 4)Site ID (if applicable)
+#' @param variables A string of variables to pull from Daymet. Options: "prcp", "tmin", "tmax", "srad", "vp", "swe", & "dayl"
+#' @param catchmentShapefile SpatialPolygonsDataframe of the catchment shapefile covering the area over which the sites will be delineated
+#' @param catchmentID a character vector of column name describing the catchment identifier in the shapefile (e.g. "FEATUREID" for NHDplusV2)
 #' @param delineatedCatchmentsList A list of catchment delineations for the region
 #' @param daymetDirectory Directory
 #' 
@@ -506,23 +422,36 @@ indexLocalDaymetVariablesForObservedSites <- function(record, variables, daymetD
 #' @details
 #' This function calculates the spatial average of the Daymet variables within a watershed.
 #' @export
-indexUpstreamDaymetVariablesForObservedSites <- function(record, variables, tiles, catchmentShapefile, covariateData, delineatedCatchmentsList, daymetDirectory){
+indexUpstreamDaymetVariablesByCatchment <- function(record, variables, catchmentShapefile, catchmentID, delineatedCatchmentsList, daymetDirectory){
   
-  library(ncdf)
-  library(rgeos)
-  library(sp)
+  # Libraries
+  require(ncdf)
+  require(rgeos)
+  require(sp)
+  require(reshape2)
   
-  start.time <- proc.time()[3]
+  # Save original names
+  yearCol  <- names(record)[2]
+  dOYCol   <- names(record)[3]
+  if(ncol(record) > 3) {siteCol  <- names(record)[4]}
   
-  numTiles <- length(tiles)
+  # Temporarily rename record
+  names(record) <- c(catchmentID, 'year', 'dOY', 'site')
+
+  # Get list of tiles and years over which data exists
+  sourceInfo <- colsplit(list.files(daymetDirectory), "_", c('tiles', 'years'))
+  
+  tiles <- unique(sourceInfo$tiles)
+  minDayYr <- min(sourceInfo$years)
+  maxDayYr <- max(sourceInfo$years)
   
   #------------------------------------------------------------------------------
   # Create a master list of the daymet coords by looping through all of the tiles
   #------------------------------------------------------------------------------
-  for (i in 1:numTiles){
+  for (i in seq_along(tiles)){
     
-    # Open the NetCDF 
-    NCDF <- open.ncdf(paste0(daymetDirectory, tiles[i], '_2010/prcp.nc'))    #netcdf   
+    # Open the NetCDF     
+    NCDF <- open.ncdf(file.path(daymetDirectory, paste0(tiles[i], '_1980'), 'prcp.nc'))    #netcdf
     
     # Dimension limits of each of the variables
     start1 = c(1,1)
@@ -547,20 +476,20 @@ indexUpstreamDaymetVariablesForObservedSites <- function(record, variables, tile
   masterCoords <- as.data.frame(masterCoords)
   
   #----------------------------------------------
-  # Loop through Sites and NetCDFs, getting data.
+  # Loop through catchmentIDs and NetCDFs, getting data.
   #----------------------------------------------  
   
-  sites <- unique(masterData$site)
+  fids <- unique(record[,c(catchmentID)])
   
   masterLength <- length(delineatedCatchmentsList)
   
-  for ( i in 1:length(sites)){
+  for ( i in seq_along(fids) ){
     
-    print(paste0(round(i/length(sites), digits = 3)*100, '% done.'))
+    print(paste0(round(i/length(fids), digits = 3)*100, '% done.'))
     
     # Define the catchment polygon:
     #------------------------------
-    featureID <- covariateData$FEATUREID[covariateData$site %in% sites[i]]
+    featureID <- fids[i] 
     features <- delineatedCatchmentsList[[which(sapply(c(1:masterLength),FUN = function(x){delineatedCatchmentsList[[x]][1]==featureID})==TRUE)]]
     
     catchmentShape <- catchmentShapefile[catchmentShapefile$FEATUREID %in% features,]
@@ -569,13 +498,12 @@ indexUpstreamDaymetVariablesForObservedSites <- function(record, variables, tile
     
     inside <- as.data.frame(a[!is.na(over(a, basinShape)),])
     
-    
     #If no point falls within the catchment, find the nearest one:
     #-------------------------------------------------------------
     if(nrow(inside) == 0 ){
       
-      tempLat <- covariateData$Latitude [covariateData$site %in% sites[i]]
-      tempLon <- covariateData$Longitude[covariateData$site %in% sites[i]]
+      tempLat <- coordinates(basinShape)[,2]
+      tempLon <- coordinates(basinShape)[,1]
       
       distances <- spDistsN1(masterCoordsMatrix, c(tempLon, tempLat), longlat = TRUE)
       minDist <- min(distances)
@@ -587,7 +515,6 @@ indexUpstreamDaymetVariablesForObservedSites <- function(record, variables, tile
       inside[1,1] <- nearLon
       inside[1,2] <- nearLat
     }
-    
     
     #Pull the Tiles for the points within the catchment:
     #---------------------------------------------------
@@ -606,24 +533,40 @@ indexUpstreamDaymetVariablesForObservedSites <- function(record, variables, tile
     }
     rm(siteLat, siteLon)
     
+    # Dataframe of coordinates and which tiles they fall into
     spatialLocs <- spatialLocs[ order(spatialLocs$Tile), ]
     subTiles <- unique(spatialLocs$Tile)
     
     
     #Link record with catchment area:
     #--------------------------------
-    curRecord <- masterData[which(masterData$site == sites[i]),]
-    curRecord <- curRecord[which(curRecord$year < 2014),]
     
-    begYr <- min(curRecord$year)
+    # Pull records for current catchmentID in range of years with data
+    curRecord <- record[which(record[,c(catchmentID)] == fids[i]),c(catchmentID, 'year', 'dOY')]
     
+    # Years in the record
+    recYears <- unique(curRecord$year)
+    
+    # Don't loop over years with no Daymet data
+    loopYears <- recYears[which(recYears >= minDayYr & recYears <= maxDayYr)]
+    
+    # Order
+    loopYears <- loopYears[order(loopYears)]
+    
+    # First year
+    begYr <- min(loopYears)
+    
+    # Loop through daymet variables
     for (j in 1:length(variables)){
       
-      for ( year in unique(curRecord$year) ){
+      # Loop through record years
+      for ( year in loopYears ){
         
+        # Loop through tiles
         for ( t in 1:length(subTiles)){
-          
-          NCDF <- open.ncdf(paste0(daymetDir, subTiles[t], '_', year,'/', variables[j], '.nc'))    #netcdf
+                    
+          # Open NetCDF
+          NCDF <- open.ncdf(file.path(daymetDirectory, paste0(subTiles[t], '_1980'), paste0(variables[j], '.nc') ) )    #netcdf
           
           # Dimension limits of each of the variables we'll use:
           # ----------------------------------------------------
@@ -650,43 +593,52 @@ indexUpstreamDaymetVariablesForObservedSites <- function(record, variables, tile
           tileCoords <- as.data.frame(cbind( as.vector(lon), as.vector(lat)))
           names(tileCoords) <- c('Lon', 'Lat')
           
+          # Which coordinates are in the current tile
           xx <- spatialLocs[which(spatialLocs$Tile == subTiles[t]),]
           
-          for (m in 1:length(xx[,1])){
+          # Index data for points within the watershed
+          for ( m in 1:nrow(xx) ){
             position <- which(lon == xx$Longitude[m] & lat == xx$Latitude[m], arr.in = TRUE)
             
             if ( t == 1 & m == 1) {tempVar <- data.frame(year, dOY, var[position[1], position[2], 1:365])} else(tempVar <- cbind(tempVar, var[position[1], position[2], 1:365]))
-            
           }
-        }
+          
+        } # end tile loop
         
-        ifelse( ncol(tempVar) > 3, R <- rowMeans(tempVar[,-c(1,2)], na.rm = FALSE, dims = 1),  R <- tempVar[,-c(1,2)] )
+        # Take the average across all points
+        ifelse( ncol(tempVar) > 3, R <- rowMeans(tempVar[,-c(1,2)], na.rm = TRUE, dims = 1),  R <- tempVar[,-c(1,2)] )
         
+        # Replace with means
         tempVar <- data.frame(tempVar[,c(1,2)], R)
+        
+        # Name columns
         names(tempVar) <- c("year", "dOY", paste0(variables[j]))
         
+        # Store spatial averages for current variable
         if ( year == begYr ) ( mainVar <- tempVar)
         if ( year >  begYr ) ( mainVar <- rbind(mainVar, tempVar))
         
         rm(tempVar, R)
-      }
+      } # end year loop
       
+      # Store spatial average for all variables
       if (j == 1) {allVars <- mainVar} else {allVars <- merge(allVars, mainVar, by = c('year','dOY'), all.x = T)}  
-    }
+    } # end variable loop
     
     #Add data into main dataframe
-    allVars$site <- sites[i]
-    tempRecord <- merge(curRecord, allVars, by = c("site", "year", "dOY"), all.x = T, all.y = F, sort = F)
-    if (i == 1) {fullRecord <- tempRecord} else {fullRecord <- rbind(fullRecord, tempRecord)}
+    allVars[ ,paste(catchmentID)] <- fids[i]
+    
+    if (i == 1) {tempRecord <- allVars} else {tempRecord <- rbind(tempRecord, allVars)}
   }
   
-  # How long it takes to run
-  end.time   <- proc.time()[3]
-  print(paste0((end.time-start.time)/3600, " hours"))
+  # Merge into original dataframe by catchmentID
+  outRecord <- merge(record, tempRecord, by = c(catchmentID, "year", "dOY"), all.x = T, all.y = F, sort = F)
   
-  return(fullRecord)
+  # Rename output
+  names(outRecord)[names(outRecord) == 'year']      <- yearCol
+  names(outRecord)[names(outRecord) == 'dOY']       <- dOYCol
+  if( exists('siteCol') ) { names(outRecord)[names(outRecord) == 'site'] <- siteCol}
   
+  # Return record with Daymet variables
+  return(outRecord)
 }
-
-
-
