@@ -224,10 +224,8 @@ if(runParallel) {
       return(fm)
     }))
     
-    M3 <- mcmc.list(out)
-    
     stopCluster(CL)
-    return(M3)
+    return(out)
   }
   
   
