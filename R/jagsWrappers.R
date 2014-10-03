@@ -753,7 +753,7 @@ modelRegionalTemp.autoreg <- function(data = tempDataSyncS, params = c("sigma", 
   #  temp.model <- function(){
 {
   sink("code/modelRegionalTemp-autoreg.txt")
-  cat(
+  cat("
     model{
       # Priors
       BairTemp ~ 
