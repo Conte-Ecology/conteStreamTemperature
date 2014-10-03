@@ -406,7 +406,7 @@ if(nc) {
 if(runParallel) {
   if(coda) {
     CL <- makeCluster(nc)
-    clusterExport(cl=CL, list("data.list", "inits", "params", "Ti", "L", "n", "W.year", "X.site", "X.year", "n.burn", "n.it", "n.thin"), envir = environment())
+    clusterExport(cl=CL, list("data.list", "inits", "params", "Ti", "L", "n", "W.year", "X.year", "n.burn", "n.it", "n.thin"), envir = environment())
     clusterSetRNGStream(cl=CL, iseed = 2345642)
     
     system.time(out <- clusterEvalQ(CL, {
@@ -424,7 +424,7 @@ if(runParallel) {
     
   } else {
     CL <- makeCluster(nc)
-    clusterExport(cl=CL, list("data.list", "inits", "params", "Ti", "L", "n", "W.year", "X.site", "X.year", "n.burn", "n.it", "n.thin"), envir = environment())
+    clusterExport(cl=CL, list("data.list", "inits", "params", "Ti", "L", "n", "W.year", "X.year", "n.burn", "n.it", "n.thin"), envir = environment())
     clusterSetRNGStream(cl=CL, iseed = 2345642)
     
     system.time(out <- clusterEvalQ(CL, {
