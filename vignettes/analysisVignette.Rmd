@@ -1,11 +1,1578 @@
-<!--
-%\VignetteEngine(knitr)
-%\VignetteIndexEntry{Daily Stream Temperature Analysis}
--->
+---
+title: "Daily Stream Temperature Full Workflow"
+author: "Daniel Hocking, Kyle O'Neil, Ben Letcher"
+date: "`r Sys.Date()`"
+#output: rmarkdown::html_vignette
+#vignette: >
+#  %\VignetteIndexEntry{Vignette Title}
+#  %\VignetteEngine{knitr::rmarkdown}
+#  %\usepackage[utf8]{conteStreamTemperature}
+#  %\VignetteIndexEntry{Daily Stream Temperature Full Workflow}
+---
 
-More coming soon
-===============
+
+## STEP 1: Index Data for Observed Sites
+
+This script pairs stream temperature sites with the covariate values based on NHDPlus catchment delineation. It also indexes timeseries climate data from Daymet and pairs it with the stream temperature record.
+
+Currently the Daymet NetCDF files cover the years 1980-2013 and the spatial range of which is VT, NH, MA, CT, RI, ME, and parts of NY.
+
+The primary input files are:
+
+1. The stream temperature record
+2. A catchments shapefile covering the contributing watersheds of this dataset
+3. A master list of delineated catchments for the area
+4.A master list of the local and upstream covariate values
+
+
+### Specify libraries and directories and define the projection of the spatial data:
+
+``` {r Libraries and directories}
+rm(list=ls())
+
+library(sp)
+library(rgdal)
+library(rgeos)
+library(maptools)
+library(chron)
+library(ncdf)
+library(ggplot2)
+library(reshape2)
+library(gridExtra)
+library(plyr)
+library(zoo)
+library(devtools)
+install_github("Conte-Ecology/conteStreamTemperature")
+library(conteStreamTemperature)
+library(dplyr)
+library(DataCombine) # for the slide function
+library(ggmcmc) # for plotting JAGS output
+
+# Set directories
+baseDir <- getwd()
+dataInDir  <- paste0(baseDir, '/dataIn/' )
+dataOutDir <- paste0(baseDir, '/dataOut/')
+graphsDir  <- paste0(baseDir, '/graphs/' )
+dataLocalDir <- paste0(baseDir, '/localData/')
+
+# Daymet data directory
+daymetDir <- 'F:/KPONEIL/SourceData/climate/DAYMET/unzipped/Daily/'
+
+# Enter the data source agency abbreviation
+dataSource <- 'MEFWS'
+
+# Define the projection of the spatial data
+proj4.NHD  <- "+proj=longlat +ellps=GRS80 +datum=NAD83 +no_defs"
+
+outFile <- 'springFallBreakpoints'
+```
+
+### Load the data required for data indexing:
+
+** Kyle are these functions now in the R package? If so, we should call them from there. Also the data needs to be universally accessible (Felek for now?) the the directory structure pointed there **
+
+```{r Load data}
+#Load the data indexing and plotting functions
+source(paste0(baseDir, 'temperatureProject/code/functions/dataIndexingFunctions.R'))
+source(paste0(baseDir, 'temperatureProject/code/functions/plottingFunctions.R'))
+
+# Catchments shapefile
+catchments <- readShapePoly ( "C:/KPONEIL/gis/nhdPlusV2/NENY_NHDCatchment.shp", proj4string=CRS(proj4.NHD))
+
+# Delineated catchments list (variable: NENYDelineatedCatchments)
+load(paste0(baseDir, 'dataIn/delineatedCatchments/DelineatedCatchments_NHDPlus_NENY.RData'))
+
+# Stream temperature record (variable: masterData)
+load(paste0(baseDir, 'temperatureProject/dataIn/', dataSource, '/streamTempData_', dataSource, '.RData'))
+
+# Master covariate data (variables: LocalStats & UpstreamStats)
+load("dataIn/NENY_CovariateData_2014-06-12.RData")
+
+```
+
+### Create a shapefile of the site locations:
+
+```{r location file}
+
+# Name of the output shapefile
+outputName <- paste0(dataSource, 'sites')
+
+# Run the function that creates the SpatialPointsDataFrame
+sitesShapefile <- createSiteLocationsShapefile(masterData, proj4.NHD)
+
+# Set the output directory
+setwd('C:/KPONEIL/GitHub/projects/temperatureProject/maps/siteLocations')
+
+# Write out the shapefile
+writeOGR(sitesShapefile,  ".", layer = outputName, driver = "ESRI Shapefile")
+```
+
+### Index the covariates for the observed stream temperature sites:
+
+This function indexes values from the master list of covariates for observed stream temperature sites.
+It takes the following:
+
+1. The stream temperature record (unique site ID, latitude, and longitude columns)
+2. A dataframe of the covariates for the catchments (FEATUREIDs source)
+3. A master catchments shapefile
+4. A CRS string of the spatial data projection
+5. A string of variables to pull from the covariates list
+
+It returns a dataframe with the site name, lat/lon, FEATUREID, and the select covariate values.
+
+```{r Covariate data}
+# List the covariates to be indexed. (This can be changed to be comprehensive or to be dynamic.)
+fields <- c("FEATUREID", "ReachLengthKM", "Forest", "Herbacious", "Agriculture", "HerbaciousOrAgriculture", "Developed", "DevelopedNotOpen", 
+            "Wetland", "WetlandOrWater", "Water", "UndevelopedForest", "Impervious", "AnnualTmaxC", "AnnualTminC", "WinterPrcpMM", "AnnualPrcpMM", 
+            "AtmDepositionNO3", "AtmDepositionSO4", "BasinSlopeDEG", "DrainageClass", "HydrologicGroupA", "HydrologicGroupAB", "HydrologicGroupCD", 
+            "HydrologicGroupD4", "HydrologicGroupD1", "SurficialCoarseC", "PercentSandy", "TotDASqKM", "ReachElevationM", "BasinElevationM", 
+            "SummerPrcpMM", "ReachSlopePCNT", "BasinSlopePCNT", "JanPrcpMM", "FebPrcpMM", "MarPrcpMM", "AprPrcpMM", "MayPrcpMM", "JunPrcpMM", 
+            "JulPrcpMM", "AugPrcpMM", "SepPrcpMM", "OctPrcpMM", "NovPrcpMM", "DecPrcpMM", "CONUSOpenWater", "CONUSWetland", "TNC_DamCount", 
+            "ImpoundmentsOpenSqKM", "ImpoundmentsAllSqKM", "WetlandsOpenSqKM", "WetlandsAllSqKM", "PercentImpoundedOpen", "PercentImpoundedAll", 
+            "OffChannelOpenSqKM", "OffChannelAllSqKM", "StreamOrder", "HUC4", "HUC8", "HUC12")
+
+covariateData <- indexCovariateData(masterData, UpstreamStats, catchments, proj4.NHD, fields)
+
+```
+
+### Save the covariate data
+```{r Save the covariate data}
+save(covariateData, file = paste0('dataIn/', dataSource, '/covariateData_', dataSource, '.RData'))
+```
+
+### At this point the stream temperature sites need to be checked against catchments to make sure they were assigned to the correct one. This is necessary because of innaccuracies in the NHDPlus medium resolution delineation. A visual inspection should be performed comparing the site location (determined by lat/lon coords) to the catchment it was assigned. This can be accomplished by using mapping software (e.g. ArcGIS) to compare the stream name from the temperature metadata to the stream names in the NHDPlus flowline shapefiles. This will require knowledge of how NHDPlus works and is typically done in the followins steps:
+
+1. Visually check where the site falls on both the NHDPlus high resolution and medium resolution flowlines, keeping in mind that delineation is based on the medium res flowlines.
+2. If there is a conflict (e.g. the site is on a different reach in the high res than the medium res) then the catchment needs to be checked.
+3. If the site would be in a different catchment, based on the high resolution flowlines, then the catchment must be edited.
+4. The other case is if the site is on a tributary not on the medium res flowlines. In this case the site should get assigned to "local" catchment values.
+
+A CSV is created to accompany this process and reassign FEATUREIDs. This spreadsheet exists in the "dataIn" directory of other datasets and is called "siteChanges_(agency)". It has the following format:
+
+##########################################################################################################
+     streamName  agency      site      currentFeatureID    correctFeatureID   localCatchment     notes
+    SOUTH RIVER  MADEP   MADEP_W0013         10294990                1              0      
+    SOUTH RIVER  MADEP   MADEP_W0014         10294990                1              0      
+   ROGERS BROOK  MADEP   MADEP_W0096          6745034                1              0      
+      ELM BROOK  MADEP   MADEP_W0099          6747180                1              0      
+ GRAVELLY BROOK  MADEP   MADEP_W0124          5860641                1              0      
+     FISH BROOK  MADEP   MADEP_W0128          5860427                1              0      
+###########################################################################################################
+
+ Some notes on the CSV file:
+
+A 1 = "yes" and a 0 = "no".
+ In the "correctFeatureID" column a 1 indicates to use the same featureID as before while any changes will be indicated by listing the new featureID. 
+ In the "localCatchment" column a 1 indicates to use the local values for the catchment while a 1 indicates to use the upstream values for the catchment.
+ In some cases there is also a column for cases of duplicate locations. 
+ The impoundment related data cannot be indexed for local stats because of how the original data is processed. For now these get NA values. This could potentially be changed to zero values if we assume there are no impoundments in small (single catchment) headwaters.
+
+
+### Create the "siteChanges" CSV file template for the current agency: 
+
+This file will still need the stream name filled in as well as the changes from the visual inspection. Stream name is formatted differently for each dataset, so for now it is left blank in this script.
+
+```{r Create the "siteChanges" CSV}
+# Create the CSV format
+if( 'description' %in% names(masterData)){ 
+
+  descriptions <- unique(masterData[,c('site', 'description')])
+
+  setup <- merge(covariateData[,c('site', 'FEATUREID')], descriptions, by = 'site', all.x = T, all.y = F, sort = F)
+} else ( setup <- data.frame(covariateData[,c('site', 'FEATUREID')], description = NA) )
+
+siteChanges <- data.frame(streamName = setup$description, agency = dataSource, site = setup$site, currentFeatureID = setup$FeatureID, correctFEATUREID = NA, localCatchment = NA, notes = NA )
+
+# Define the file name
+siteChangesFile <-  paste0('dataIn/', dataSource, '/siteChanges_', dataSource, '.csv')
+
+# If the file does not already exist, create it.
+if (!file.exists(siteChangesFile)){
+  write.csv(siteChanges, file = siteChangesFile, row.names = F)
+} else(print("File already exists!"))
+```
+
+Once the sites have been checked against NHDPlus catchments, run the code that corrects the covariates:
+
+ This function corrects the covariate data file after the site locations have been manually checked.
+ It takes the following:
+    1) The original covariate data file
+    2) The "siteChanges" CSV file
+    3) The master dataframes of both local and upstream covariate statistics
+    4) A list of layers that get NAs assigned for local catchment values. (This will hopefully change with an updated layer)
+ 
+It returns the same covariate dataframe with corrected values and a column indicating whether or not values for that site changed.
+
+```{r edit covariateData}
+# Save a back-up the file. (This can be deleted later)
+save(covariateData, file = paste0('dataIn/', dataSource,'/covariateData_', dataSource, '_ORIGINAL.RData'))
+  
+siteChanges <- read.csv(paste0('dataIn/', dataSource, '/siteChanges_', dataSource, '.csv'))
+
+# List the impoundments layers. Right now, the catchments that get assigned local values get NAs for these layers (because of how they are calculated in GIS they are only applicable to upstream statistics).
+impoundmentLayers <- c('ImpoundmentsOpenSqKM', 'OffChannelOpenSqKM', 'WetlandsOpenSqKM', 'ImpoundmentsAllSqKM', 'OffChannelAllSqKM', 'WetlandsAllSqKM', 'PercentImpoundedOpen', 'PercentImpoundedAll')
+
+covariateData <- correctCovariateData(covariateData, siteChanges, LocalStats, UpstreamStats, impoundmentLayers)
+
+```
+
+Over-write the existing existing covariate data and delete the backup if you're confident in the new values:
+
+```{r Save the covariate data}
+save(covariateData, file = paste0('dataIn/', dataSource, '/covariateData_', dataSource, '.RData'))
+```
+
+### Index the local Daymet variables for the observed stream temperature sites:
+
+This function pulls the Daymet variables for a time series at one location nearest to the site location. It takes the stream temperature record and the string of variables to pull from Daymet.
+
+At minimum, the record needs a "site", "Latitude", "Longitude", "year", and "dOY" columns.
+
+It returns the original dataframe with new columns for the Daymet variables.
+
+```{r Local Daymet}
+
+# List the Daymet variables to index
+localVariables <- c("dayl", "srad", "swe", "tmax", "tmin", "vp")
+
+# Run the function that indexes the Daymet data
+newLocal <- indexLocalDaymetVariablesForObservedSites(masterData, localVariables, daymetDir)
+
+# Rename 'tmin' and 'tmax' to avoid confusion
+names(newLocal)[names(newLocal) == 'tmax'] <- 'maxAirTemp'
+names(newLocal)[names(newLocal) == 'tmin'] <- 'minAirTemp'
+
+# Check the amount of NAs
+length(which(is.na(newLocal)))/length(which(!is.na(newLocal)))*100
+```
+
+```{r Save the Local Daymet}
+masterData <- newLocal[order(newLocal$site,newLocal$year,newLocal$dOY),]
+save(masterData, file = paste0('dataIn/', dataSource, '/observedStreamTempAndClimateData_', dataSource, '_NeedPrcp.RData'))
+```
+
+### Plot the raw stream temperature data with air temperature:
+
+This section creates plots of raw stream temperature data. It takes the following:
+    1) The stream temperature record (unique site ID, date, stream temperature, and air temperature columns)
+    2) The directory to save the plots to (graphsDir)
+ It returns a PNG file with plots of air and water plotted against each other and over time.
+ 
+```{r Plot raw data}
+
+# Define the raw data plot folder
+rawPlotsDir <- paste0(baseDir, 'graphs/rawData/', dataSource, '/')
+
+# If the folder does not exist, then create it
+if (!file.exists(rawPlotsDir)){
+  dir.create(file.path(paste0(rawPlotsDir)))
+}
+  
+# Run the function that loops through all of the sites creating plots for each
+plotRawTemperatureData(masterData, rawPlotsDir)
+```
+
+
+### Index the upstream Daymet variables for the observed stream temperature sites:
+
+ This function calculates the spatial average of the Daymet variables within a watershed.
+ It takes the following:
+    1) The stream temperature record (Site names, latitude, longitude, year, and dOY columns)
+    2) A string of variables to pull from Daymet
+    3) A list of daymet tiles covered by the watersheds
+    4) A master catchments shapefile
+    5) A dataframe of the covariates for the catchments (FEATUREIDs source)
+    6) A list of catchment delineations for the region
+ It returns the original dataframe with new columns for the Daymet variables.
+ 
+```{r Index the upstream Daymet variables for the observed sites}
+# Load the covariate data for the featureIDs
+load(paste0(baseDir, 'dataIn/', dataSource, '/covariateData_', dataSource, '.RData'))
+
+# Daymet variables you want
+upstreamVariables <- c('prcp')
+
+# List the Daymet tiles that the watersheds may fall in
+daymetTiles <- c(11754, 11755, 11756, 11934, 11935, 11936, 12114, 12115, 12116, 12117, 12295, 12296, 12297)
+
+# Run the function that indexes the Daymet data and returns a spatial average
+newUpstream <- indexUpstreamDaymetVariablesForObservedSites(masterData, upstreamVariables, daymetTiles, catchments, covariateData, NENYDelineatedCatchments, daymetDir)
+```
+
+### Save the resulting dataframe
+
+```{r Save the dataframe}
+masterData <- newUpstream
+save(masterData, file = paste0('dataIn/', dataSource, '/observedStreamTempAndClimateData_', dataSource, '.RData'))
+
+head(masterData)
+str(masterData)
+```
+
+<hr>
+
+# The above section can currently only be run on Kyle's machine because that's where the data is and that's what is sourced. He will have to get the data somewhere like Felek and change the pointers and write the `head()` and `str()` where it's needed so Jeff and see the inputs and outputs.
+
+## STEP 2: Clip to Syncronized Season
+
+The following uses the air and water data to calculate the period of each year at each site when they are syncronized so we are not dealing with ice formation, melting, cover, or large amounts of snow melt.
+
+The benefit of using this method rather than just excluding the winter months is that the effects of snow and ice vary greatly with elevation, topography, latitude, and annually even within sites.
+
+### Select the agencies to use data from.
+
+```{r Choose data source}
+
+# Select "T" or "F" for using agency data
+sources <- list (
+  # Northeast
+  CTDEP  = CTDEP  <- T,
+  MADEP  = MADEP  <- T,
+  MAFW   = MAFW   <- T,
+  MAUSGS = MAUSGS <- T,
+  MEDMR  = MEDMR  <- T,
+  MEFWS  = MEFWS  <- T,
+  NHDES  = NHDES  <- T,
+  NHFG   = NHFG   <- T,
+  USFS   = USFS   <- T,
+  VTFWS  = VTFWS  <- T,
+  
+  # Montana
+  MTUSGSYellowstone = MTUSGSYellowstone <- F,
+  MTUSGSGlacier     = MTUSGSGlacier     <- F
+)
+
+dataSources <- names(sources[(sources == T)])
+
+# Enter the common fields from the temperature ("site" must be one).
+tempFields <- c('site', 'year', 'dOY', 'date', 'agency', 'temp', 'airTemp')
+
+# Enter the specific covariate fields you want to pull ("site" must be one) or for the entire file, enter "ALL"
+covFields <- c('site', 'HUC4', 'HUC8', 'HUC12')
+
+# Read in data records and join into one dataframe
+# ------------------------------------------------
+e <- readStreamTempData(timeSeries = T, covariates = T, dataSourceList = dataSources, fieldListTS = tempFields, fieldListCD = covFields, directory = dataInDir )
+
+```
+
+Calculate the temperature index which is the key metric for estimating the synchrony between air and water temperature.
+
+```{r Data prep}
+
+# Calculate temperature index. Add small # to avoid infinity
+e$tempIndex <- (e$temp-e$airTemp)/(e$temp + 0.00000001)
+
+# Define list of sites
+siteList <- unique(e$site)
+
+# Order by group and date
+e <- e[order(e$site,e$year,e$dOY),]
+
+# For checking the order of e
+e$count <- 1:length(e$year)
+
+# Define the site/year ID
+e$siteYear <- paste(e$site,e$year,sep='_')
+
+# Maintain order
+e <- e[order(e$count),]
+```
+
+Get the moving mean of the temp index for each site and put into the data frame
+
+```{r moving mean}
+
+# Set frame sizefor moving mean, which is centered by default
+window <- 10
+
+# Number of sites
+nSites <- length(siteList)
+
+# Unique site and year combos 
+siteYearCombos <- unique(e[,c('site','year')])
+
+# Add columns for moving mean and sd
+e$movingMean <- NA
+
+# Loop through site/year combinations calculating moving means
+for (i in 1:nrow(siteYearCombos)){
+
+  #library(zoo)
+  
+  # Status
+  #print(c(i,as.character(siteYearCombos$site[i]),siteYearCombos$year[i],i/nrow(siteYearCombos)))
+  
+  # Index current site/year
+  currSite <- which(e$site == as.character(siteYearCombos$site[i]) & e$year == siteYearCombos$year[i] )
+
+  # Only calculate for sites with enough data
+  if(length(currSite) >= window){currMean <-  rollapply(e$tempIndex[currSite], width=window, fill=NA, mean)} else(currMean <- NA)
+
+  # Add to main dataframe
+  e$movingMean[currSite] <- currMean
+}
+
+# Maintain order
+e <- e[order(e$count),]
+
+```
+
+
+```{r Create the breaks dataframe}
+
+# Define breakpoint time period and range for tempIndex
+beginningDayForCI <- 125
+endingDayForCI <- 275
+loCI <- 0.001
+hiCI <- 0.999
+
+for ( i in 1:nrow(siteYearCombos)){
+  
+  # Print status
+  print(i)
+  
+  # Index sites, years, and HUCs
+  tempBreaks <- data.frame( year  = as.numeric  (siteYearCombos$year[i]),
+                            site  = as.character(siteYearCombos$site[i]),
+                            HUC12 = as.character(unique(e$HUC12[which(e$site == siteYearCombos$site[i])])),
+                            HUC8  = as.character(unique(e$HUC8 [which(e$site == siteYearCombos$site[i])])),
+                            HUC4  = as.character(unique(e$HUC4 [which(e$site == siteYearCombos$site[i])])),
+                            quantileLo = NA,
+                            quantileHi = NA)
+  
+  # Calculate the tempindex quantiles
+  tmp <- e[e$site == siteYearCombos$site[i] & e$year  %in% siteYearCombos$year[i] & e$dOY %in% beginningDayForCI:endingDayForCI,'tempIndex']
+  if (any(!is.na(tmp))){
+    TIQ <- quantile(tmp, probs=c(loCI,0.5,hiCI),na.rm=T)
+    
+    # High and low quantiles
+    tempBreaks$quantileLo <- TIQ[1]
+    tempBreaks$quantileHi <- TIQ[3]
+  }
+  
+  # Add current site to "breaks"
+  if ( i == 1 ) { breaks <- tempBreaks } else( breaks <- rbind(breaks, tempBreaks))
+  
+} 
+
+# Add columns used later
+breaks$springBPComplete <- FALSE
+breaks$fallBPComplete <- FALSE
+breaks$springOrFallBPComplete <- FALSE
+breaks$springBP <- NA
+breaks$fallBP   <- NA
+```
+
+Use runs analysis of the movingMean to define spring and fall breakpoints:
+
+```{r Spring/fall bp}
+# Set range (dOY) and count for assigning spring BP
+minCompleteDOYBP1 <- 15
+maxCompleteDOYBP1 <- 175
+numForCompleteBP1 <- round( ( maxCompleteDOYBP1-minCompleteDOYBP1 ) * 0.9 )
+
+# Set range (dOY) and count for assigning fall BP
+minCompleteDOYBP3 <- 225
+maxCompleteDOYBP3 <- 350
+numForCompleteBP3 <- round( ( maxCompleteDOYBP3-minCompleteDOYBP3 ) * 0.9 )
+
+# Number of days in a row that need to be within the CIs to get assigned synchronised (referred to as numForward range)
+numForwardSpring <- 10
+numForwardFall   <- 16
+
+# Loop through all sites
+for (j in 1:nSites){
+  
+  #library(plyr)
+  
+  # Index current site
+  # ------------------
+  e1 <- e[e$site == siteList[j],]
+
+  # Index spring range
+  # ------------------
+  e3Spring <- e1[ e1$dOY >= minCompleteDOYBP1 & e1$dOY <= maxCompleteDOYBP1, ]
+	
+  # Empty out from previous run
+	completeYearsSpring <- NULL 
+  
+  # If statement to avoid error if e3Spring is empty
+  if ( !empty( e3Spring ) ) {  
+    
+    # Determine which years have complete records in spring
+	  completeSpring <- as.data.frame( table( e3Spring$year,is.na( e3Spring$temp ) ) )
+	  incompleteYearsSpring <- as.numeric(as.character(completeSpring$Var1[completeSpring$Var2 == 'FALSE' & completeSpring$Freq <  numForCompleteBP1]))
+	  completeYearsSpring <-   as.numeric(as.character(completeSpring$Var1[completeSpring$Var2 == 'FALSE' & completeSpring$Freq >= numForCompleteBP1]))
+  }
+  
+  # Index fall range
+  # ----------------
+	e3Fall <- e1[ e1$dOY >= minCompleteDOYBP3 & e1$dOY <= maxCompleteDOYBP3, ]
+  
+  # Empty out from previous run	
+  completeYearsFall <- NULL
+	
+  # If statement to avoid error if e3Fall is empty
+	if ( !empty( e3Fall ) ) {
+    
+    # Determine which years have complete records in fall
+	  completeFall <- as.data.frame( table( e3Fall$year,is.na( e3Fall$temp ) ) )
+	  incompleteYearsFall <- as.numeric(as.character(completeFall$Var1[completeFall$Var2 == 'FALSE' & completeFall$Freq <  numForCompleteBP3]))
+	  completeYearsFall <-   as.numeric(as.character(completeFall$Var1[completeFall$Var2 == 'FALSE' & completeFall$Freq >= numForCompleteBP3]))
+	} 
+  
+  # Years with either a complete spring or complete fall record
+	completeYearsSpringOrFall <- unique(c(completeYearsSpring,completeYearsFall))
+	
+  # Loop through the years with at least one complete season
+	for (year in completeYearsSpringOrFall){ 
+
+    # Print status
+    print(c('BP 1 and 3',j,as.character(siteList[j]),year))
+    
+    # New column for selecting years with at least one complete season
+	  breaks$springOrFallBPComplete[ breaks$year == year & breaks$site == siteList[j] ] <- TRUE
+	 
+    # Index the high and low quantiles calculated from the tempIndex
+    lo <- breaks$quantileLo[breaks$year == year & breaks$site == siteList[j]] 
+    hi <- breaks$quantileHi[breaks$year == year & breaks$site == siteList[j]] 
+    
+    # Index current year
+    eYear <- e1[e1$year == year, ] 
+
+    # Spring Breakpoint Calculation
+    # -----------------------------
+
+    # Create dataframe for calculating number of synchronized days in a row. 
+  	runsSpring <- data.frame(array(NA,c(1,numForwardSpring)))
+    
+    # Only calculate if it is a complete season
+		if(year %in% completeYearsSpring){
+			
+      # Loop through approximate time forward until breakpoint in ascending water temp
+      for (i in 1:(200)){
+				
+        # From the current day, loop forward through the numForward range to determined which days are in sync
+        for (ii in 2:numForwardSpring ){
+          
+          # A 1 gets assigned if the moving mean of that day is within the CI range or 
+          #     if the iteration falls out of the approximated range examined. If the moving
+          #     mean is outside of the range, it gets assigned a zero.
+          if( (i+ii-2) %in% eYear$dOY ) {
+			  	  runsSpring[ i,ii ] <- 1*((eYear$movingMean[ eYear$dOY == (i+ii-2) ] >= lo) & (eYear$movingMean[ eYear$dOY == (i+ii-2) ] <= hi))
+          } else (runsSpring[ i,ii ] <- 1  )
+            
+				}# end numForward loop
+        
+        # Determine if all of the days in the numForward range are in sync. If all days within numForward
+        #   are in sync (assigned a 1), the product will be a 1, otherwise it is NA.
+				runsSpring[ i,1 ] <- prod( runsSpring[ i, 2:numForwardSpring ] )
+        
+			}# End approximated seasonal loop
+      
+      # The first day where all of the days ahead of it are in sync (in the numForward range) will be the minimum day with a 1.
+      #   This day gets assigned the spring breakpoint
+			breaks$springBP[ breaks$year == year & breaks$site == siteList[j] ] <- min(which(runsSpring[,1] == 1))
+			
+      # Fill in the complete springBP column
+      breaks$springBPComplete[ breaks$year == year & breaks$site == siteList[j] ] <- TRUE
+		} #completeYearsSpring if statement
+    
+    
+    # Fall Breakpoint Calculation
+    # ---------------------------
+    
+    # Create dataframe for calculating number of days in a row within range
+    runsFall   <- data.frame(array(NA,c(1,numForwardFall)))
+    
+    # Only calculate if it is a complete season
+	  if(year %in% completeYearsFall){
+
+      # Determine the point to stop to keep from going past lower limit if dOY
+      stopLoop <- max( c( minCompleteDOYBP3,min(eYear$dOY)+numForwardFall + 1 ) )  
+			
+      # Loop through the approximate time backward until descending water temp
+      for (i in  max(eYear$dOY):stopLoop){
+          
+        # From the current day, loop backward through the numForward range to determined which days are in sync
+				for (ii in 2:numForwardFall ){
+          
+          # A 1 gets assigned if the moving mean of that day is within the CI range or 
+          #     if the iteration falls out of the approximated range examined. If the moving
+          #     mean is outside of the range, it gets assigned a zero.
+				  if( (i-ii+2) %in% eYear$dOY ) { 
+					  runsFall[ i,ii ] <- 1*((eYear$movingMean[ eYear$dOY == (i-ii+2) ] >= lo) & (eYear$movingMean[ eYear$dOY == (i-ii+2) ] <= hi))
+				  } else(runsFall[ i,ii ] <- 1 )
+          
+				}# end numForward loop
+        
+        # Determine if all of the days in the numForward range are in sync. If all days within numForward
+        #   are in sync (assigned a 1), the product will be a 1, otherwise it is NA.
+        runsFall[ i,1 ] <- prod( runsFall[ i, 2:numForwardFall ] )
+			
+      }# End approximated seasonal loop
+      
+      # The last day where all of the days ahead of it are in sync (in the numForward range) will be the minimum day with a 1.
+      #   This day gets assigned the fall breakpoint
+			breaks$fallBP[ breaks$year == year & breaks$site == siteList[j] ] <- max(which(runsFall[,1] == 1))
+			
+      # Fill in the complete fallBP column
+      breaks$fallBPComplete[ breaks$year == year & breaks$site == siteList[j] ] <- TRUE
+
+		}	#completeYearsFall if statement
+    
+	} #completeYearsSpringOrFall loop
+  
+} #site loop
+
+```
+
+### This section determines the mean breakpoint from the smallest scale where a mean exists and assigns it to sites that did not have enough data to calculate a breakpoint (start with site mean and work up to HUC4 mean).
+
+```{r meanBPs}
+# Calculate mean BPs across different scales
+meanBPSite  <- ddply( breaks, .(site) , summarise, meanSpringBPSite  = mean(springBP,na.rm=T), meanFallBPSite  = mean(fallBP,na.rm=T) )
+meanBPHUC12 <- ddply( breaks, .(HUC12), summarise, meanSpringBPHUC12 = mean(springBP,na.rm=T), meanFallBPHUC12 = mean(fallBP,na.rm=T) )
+meanBPHUC8  <- ddply( breaks, .(HUC8) , summarise, meanSpringBPHUC8  = mean(springBP,na.rm=T), meanFallBPHUC8  = mean(fallBP,na.rm=T) )
+meanBPHUC4  <- ddply( breaks, .(HUC4) , summarise, meanSpringBPHUC4  = mean(springBP,na.rm=T), meanFallBPHUC4  = mean(fallBP,na.rm=T) )
+
+# Merge in mean BPs to "breaks"
+breaks <- merge( x = breaks, y = meanBPSite , by = 'site' , all.x = T, all.y = F, sort = F)
+breaks <- merge( x = breaks, y = meanBPHUC12, by = 'HUC12', all.x = T, all.y = F, sort = F)
+breaks <- merge( x = breaks, y = meanBPHUC8 , by = 'HUC8' , all.x = T, all.y = F, sort = F)
+breaks <- merge( x = breaks, y = meanBPHUC4 , by = 'HUC4' , all.x = T, all.y = F, sort = F)
+
+# Add columns for final breakpoints
+breaks$finalSpringBP  <- NA
+breaks$sourceSpringBP <- NA
+breaks$finalFallBP    <- NA
+breaks$sourceFallBP   <- NA
+
+# Calculated BPs
+# --------------
+# Spring
+newSpringBP <- which(is.na(breaks$finalSpringBP) & !is.na(breaks$springBP) )
+breaks$finalSpringBP [ newSpringBP ] <- breaks$springBP[ newSpringBP ]
+breaks$sourceSpringBP[ newSpringBP ] <- 'directly calculated'
+
+#Fall
+newFallBP <- which(is.na(breaks$finalFallBP) & !is.na(breaks$fallBP) )
+breaks$finalFallBP [ newFallBP ] <- breaks$fallBP[ newFallBP ]
+breaks$sourceFallBP[ newFallBP ] <- 'directly calculated'
+
+# Site averaged BPs
+# -----------------
+# Spring
+siteBP <- which(is.na(breaks$finalSpringBP) & !is.na(breaks$meanSpringBPSite) )
+breaks$finalSpringBP [ siteBP ] <- breaks$meanSpringBPSite[ siteBP ]
+breaks$sourceSpringBP[ siteBP ] <- 'site mean'
+
+# Fall
+siteBP <- which(is.na(breaks$finalFallBP) & !is.na(breaks$meanFallBPSite) )
+breaks$finalFallBP [ siteBP ] <- breaks$meanFallBPSite[ siteBP ]
+breaks$sourceFallBP[ siteBP ] <- 'site mean'
+
+
+# HUC12 averaged BPs
+# ------------------
+# Spring
+huc12BP <- which(is.na(breaks$finalSpringBP) & !is.na(breaks$meanSpringBPHUC12) )
+breaks$finalSpringBP [ huc12BP ] <- breaks$meanSpringBPHUC12[ huc12BP ]
+breaks$sourceSpringBP[ huc12BP ] <- 'HUC12 mean'
+
+# Fall
+huc12BP <- which(is.na(breaks$finalFallBP) & !is.na(breaks$meanFallBPHUC12) )
+breaks$finalFallBP [ huc12BP ] <- breaks$meanFallBPHUC12[ huc12BP ]
+breaks$sourceFallBP[ huc12BP ] <- 'HUC12 mean'
+
+# HUC8 averaged BPs
+# -----------------
+# Spring
+huc8BP <- which(is.na(breaks$finalSpringBP) & !is.na(breaks$meanSpringBPHUC8) )
+breaks$finalSpringBP [ huc8BP ] <- breaks$meanSpringBPHUC8[ huc8BP ]
+breaks$sourceSpringBP[ huc8BP ] <- 'HUC8 mean'
+
+# Fall
+huc8BP <- which(is.na(breaks$finalFallBP) & !is.na(breaks$meanFallBPHUC8) )
+breaks$finalFallBP [ huc8BP ] <- breaks$meanFallBPHUC8[ huc8BP ]
+breaks$sourceFallBP[ huc8BP ] <- 'HUC8 mean'
+
+# HUC4 averaged BPs
+# -----------------
+# Spring
+huc4BP <- which(is.na(breaks$finalSpringBP) & !is.na(breaks$meanSpringBPHUC4) )
+breaks$finalSpringBP [ huc4BP ] <- breaks$meanSpringBPHUC4[ huc4BP ]
+breaks$sourceSpringBP[ huc4BP ] <- 'HUC4 mean'
+
+# Fall
+huc4BP <- which(is.na(breaks$finalFallBP) & !is.na(breaks$meanFallBPHUC4) )
+breaks$finalFallBP [ huc4BP ] <- breaks$meanFallBPHUC4[ huc4BP ]
+breaks$sourceFallBP[ huc4BP ] <- 'HUC4 mean'
+```
+
+The above data or kriging or something will have to be used to establish the syncronized portion of the year when doing the predictions to all catchments in all years after the model is run. Originally there was a model for the breakpoints but it used all the same covariates as the model of the temperature data, which seemed potentially problematic.
+
+### Save the output
+
+```{r Save output}
+# Index the columns to save
+springFallBPs <- breaks[,c('site', 'year', 'finalSpringBP', 'sourceSpringBP', 'finalFallBP', 'sourceFallBP')]
+
+# Save the output
+save(springFallBPs, file = paste0(dataOutDir, outFile, '.RData'))
+
+head(springFallBPs)
+str(springFallBPs)
+```
+
+<hr>
+
+## STEP 3: Prepare Data for the Model
+
+Lagged air temperature and precipitation and 5-day averages have to be created as covariates for the model. Then all continuous covariates have to be standardized.
+
+This section takes the break point data created in Step 2 and then uses the `readStreamTempData` function to import air, water, and selected covariate data for selected agencies.
+
+First choose the agency data that will be analyzed
+
+```{r load data}
+load(paste0(dataOutDir, 'springFallBreakpoints.RData'))
+
+# r Choose data source that will be analyzed
+
+#Northeast
+CTDEP  <- F
+MAFW   <- T
+MAUSGS <- T
+MADEP  <- T 
+NHFG   <- F
+NHDES  <- F
+USFS   <- F
+VTFWS  <- F
+MEDMR  <- F
+
+#Montana
+MTUSGSYellowstone <- F
+MTUSGSGlacier <- F
+
+sourceChoice <- list( CTDEP,   MAFW,   MAUSGS, MADEP,   NHFG,   NHDES,   MEDMR,   USFS,   VTFWS,    MTUSGSYellowstone,   MTUSGSGlacier)
+sourceNames  <- c   ('CTDEP', 'MAFW', 'MAUSGS', 'MADEP', 'NHFG', 'NHDES', 'MEDMR', 'USFS', 'VTFWS',  'MTUSGSYellowstone', 'MTUSGSGlacier')
+
+dataSource <- sourceNames[sourceChoice == T]
+
+fields <- c("agency", "date", "AgencyID", "year", "site", "date", "dOY", "temp", "airTemp", "prcp", "srad", "dayl", "swe")
+```
+
+Read the data from those agencies and join with breakpoint data then filter (clip) to the syncronized portion of the year.
+
+```{r read data and filter to syncronized}
+tempData <- readStreamTempData(timeSeries=TRUE, covariates=TRUE, dataSourceList=dataSource, fieldListTS=fields, fieldListCD='ALL', directory=dataInDir)
+
+str(tempData) # show the structure
+
+springFallBPs$site <- as.character(springFallBPs$site)
+
+# Join with break points
+tempDataBP <- left_join(tempData, springFallBPs, by=c('site', 'year'))
+rm(tempData) # save some memory
+
+# Clip to syncronized season
+tempDataSync <- filter(tempDataBP, dOY >= finalSpringBP & dOY <= finalFallBP)
+
+# Creat site and year factor variables
+tempDataSync$fyear <- as.factor(tempDataSync$year)
+tempDataSync$fsite <- as.factor(tempDataSync$site)
+
+```
+
+Head and structure for Jeff
+
+```{r head and str}
+head(tempDataSync)
+str(tempDataSync)
+```
+
+Create lagged air temperature and precipitation
+
+```{r lag airTemp & prcp}
+# Order by group and date
+tempDataSync <- tempDataSync[order(tempDataSync$site,tempDataSync$year,tempDataSync$dOY),]
+
+# For checking the order of tempDataSync
+tempDataSync$count <- 1:length(tempDataSync$year)
+
+tempDataSync <- tempDataSync[order(tempDataSync$count),] # just to make sure tempDataSync is ordered for the slide function
+
+# airTemp
+tempDataSync <- slide(tempDataSync, Var = "airTemp", GroupVar = "site", slideBy = -1, NewVar='airTempLagged1')
+tempDataSync <- slide(tempDataSync, Var = "airTemp", GroupVar = "site", slideBy = -2, NewVar='airTempLagged2')
+
+# prcp
+tempDataSync <- slide(tempDataSync, Var = "prcp", GroupVar = "site", slideBy = -1, NewVar='prcpLagged1')
+tempDataSync <- slide(tempDataSync, Var = "prcp", GroupVar = "site", slideBy = -2, NewVar='prcpLagged2')
+tempDataSync <- slide(tempDataSync, Var = "prcp", GroupVar = "site", slideBy = -3, NewVar='prcpLagged3')
+
+```
+
+Select the data potentially wanted for the analysis
 
 ```{r}
-1+1
+# Make dataframe with just variables for modeling and order before standardizing
+tempDataSync <- tempDataSync[ , c("agency", "date", "AgencyID", "year", "fyear", "site", "fsite", "date", "finalSpringBP", "finalFallBP", "FEATUREID", "HUC4", "HUC8", "HUC12", "temp", "Latitude", "Longitude", "airTemp", "airTempLagged1", "airTempLagged2", "prcp", "prcpLagged1", "prcpLagged2", "prcpLagged3", "dOY", "Forest", "Herbacious", "Agriculture", "Developed", "TotDASqKM", "ReachElevationM", "ImpoundmentsAllSqKM", "HydrologicGroupAB", "SurficialCoarseC", "CONUSWetland", "ReachSlopePCNT", "srad", "dayl", "swe")] #  
+
+summary(tempDataSync)
+dim(tempDataSync)
+tempDataSync <- na.omit(tempDataSync) ####### Change this so don't take out NA in stream temperature
+dim(tempDataSync)
 ```
+
+### Check variables for correlation
+
+```{r correlation scatterplot matrix}
+# check correlation among potential independent variables
+# Cannot plot all points because will overload the plot and lock the system up - therefore thin first
+pairs.full <- data.frame(lat = tempDataSync$Latitude,
+                    lon = tempDataSync$Longitude,
+                    airTemp = tempDataSync$airTemp, 
+                    precip = tempDataSync$prcp,
+                    drainage = tempDataSync$TotDASqKM,
+                    forest = tempDataSync$Forest,
+                    elevation = tempDataSync$ReachElevationM,
+                    coarseness = tempDataSync$SurficialCoarseC,
+                    wetland = tempDataSync$CONUSWetland,
+                    impoundments = tempDataSync$ImpoundmentsAllSqKM,
+                    swe = tempDataSync$swe,
+                    dOY = tempDataSync$dOY, 
+                    dOY2 = tempDataSync$dOY^2)
+
+pairs.thin <- sample_n(pairs.full, 3000, replace = F)
+
+# Move these into the package as helper functions--------
+## put histograms on the diagonal
+panel.hist <- function(x, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(usr[1:2], 0, 1.5) )
+  h <- hist(x, plot = FALSE)
+  breaks <- h$breaks; nB <- length(breaks)
+  y <- h$counts; y <- y/max(y)
+  rect(breaks[-nB], 0, breaks[-1], y, col="gray", ...)
+}
+
+panel.cor <- function(x, y, digits=2, prefix="", cex.cor)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r = (cor(x, y))
+  txt <- format(c(r, 0.123456789), digits=digits)[1]
+  txt <- paste(prefix, txt, sep="")
+  if(missing(cex.cor)) cex <- 0.9/strwidth(txt)
+  text(0.5, 0.5, txt, cex = cex) # * abs(r) # change color to red if >0.7
+}
+#--------
+
+pairs(pairs.thin, upper.panel=panel.smooth, lower.panel=panel.cor, diag.panel=panel.hist)
+
+# impoundments and drainage have some outliers. Look in more detail and reduce dataset to reflect this so inference is not based on a few sites in large drainages with dozens of impoundments. Could also check to make sure these are properly classified and not small tribuaries that get place in the main river (CT) catchment.
+hist(tempDataSync$TotDASqKM)
+dim(tempDataSync)
+length(unique(tempDataSync$site))
+
+tempDataSync <- filter(tempDataSync, filter = TotDASqKM <= 200)
+hist(tempDataSync$TotDASqKM)
+dim(tempDataSync)
+length(unique(tempDataSync$site))
+
+```
+**Inference only on catchments with total drainage area <= 200 km^2
+
+No problems of correlation among these potential independent covariates
+
+### Separate data for fitting (training) and validation
+
+```{r separate validation data}
+#Use validation?
+validate = T
+  
+#If validating:
+  # Choose fraction of total # of sites:
+validateFrac <- 0.2
+
+if(validate) {
+  n.fit <- floor(length(unique(tempDataSync$site)) * (1 - validateFrac))
+
+  set.seed(2346)
+  site.fit <- sample(unique(tempDataSync$site), n.fit, replace = FALSE) # select sites to hold back for testing 
+  tempDataSyncValid <- subset(tempDataSync, !site %in% site.fit) # data for validation
+  tempDataSync <- subset(tempDataSync, site %in% site.fit)    # data for model fitting (calibration)
+  } else {
+    tempDataSyncValid <- NULL
+  }
+
+```
+
+### Standardize continuous covariates for analysis
+
+```{r Standardize}
+# Standardize for Analysis
+
+tempDataSyncS <- cbind(tempDataSync[ ,c(1:15)],
+             apply(X = tempDataSync[ ,16:dim(tempDataSync)[2]], MARGIN=2,
+                   FUN = function(x){(x-mean(x, na.rm=TRUE)) / sd(x, na.rm=TRUE)}))
+
+
+
+tempDataSyncValidS <- cbind(tempDataSyncValid[ ,c(1:15)],
+             apply(X = tempDataSyncValid[ ,16:dim(tempDataSyncValid)[2]], MARGIN=2,
+                   FUN = function(x){(x-mean(x, na.rm=TRUE)) / sd(x, na.rm=TRUE)}))
+
+tempDataSyncValidS$fyear <- as.factor(tempDataSyncValidS$year)
+tempDataSyncValidS$fsite <- as.factor(tempDataSyncValidS$site)
+```
+
+### Save data (for backtransformation later), standardized data (for analysis) from both the calibration and validation datasets
+
+```{r save tempDataSync for use in analysis}
+save(tempDataSync, tempDataSyncS, tempDataSyncValid, tempDataSyncValidS, file=paste0(dataOutDir, 'tempDataSync.RData'))
+```
+
+Head and structure for Jeff. The calibration and validation structures are the same just subsets of the same data frames.
+
+```{r head and str of cal and valid data}
+head(tempDataSync)
+str(tempDataSync)
+str(tempDataSyncS)
+```
+
+<hr>
+
+## STEP 4: Analysis (of calibration data)
+
+Load data frame from Step 3 if not loaded
+
+```{r results = 'hide', warning=FALSE, message=FALSE}
+# load(paste0(dataOutDir, 'tempDataSync.RData'))
+```
+
+### Run the model in JAGS
+
+```{r run-model, results = 'hide'}
+coda.tf <- TRUE # currently only works in full for TRUE (using coda.samples)
+
+data.fixed <- data.frame(intercept = 1,
+                    lat = tempDataSyncS$Latitude,
+                    lon = tempDataSyncS$Longitude,
+                    drainage = tempDataSyncS$TotDASqKM,
+                    forest = tempDataSyncS$Forest,
+                    elevation = tempDataSyncS$ReachElevationM,
+                    coarseness = tempDataSyncS$SurficialCoarseC,
+                    wetland = tempDataSyncS$CONUSWetland,
+                    impoundments = tempDataSyncS$ImpoundmentsAllSqKM)
+
+data.random.sites <- data.frame(intercept.site = 1, 
+                     airTemp = tempDataSyncS$airTemp, 
+                     #airTempLag1 = tempDataSyncS$airTempLagged1,
+                     airTempLag2 = tempDataSyncS$airTempLagged2,
+                     precip = tempDataSyncS$prcp,
+                     precipLag1 = tempDataSyncS$prcpLagged1,
+                     precipLag2 = tempDataSyncS$prcpLagged2) # , swe = tempDataSyncS$swe
+
+data.random.years <- data.frame(intercept.year = 1, 
+                     dOY = tempDataSyncS$dOY, 
+                     dOY2 = tempDataSyncS$dOY^2,
+                     dOY3 = tempDataSyncS$dOY^3)
+
+monitor.params <- c("residuals",
+            #"deviance",
+            "sigma",
+            "B.0",
+            #"B.site",
+            #"rho.B.site",
+            #"mu.site",
+            "sigma.b.site",
+            #"B.huc",
+            #"rho.B.huc",
+            "mu.huc",
+            "sigma.b.huc",
+            #"B.year",
+            #"rho.B.year",
+            "mu.year",
+            "sigma.b.year")
+
+system.time(M.huc <- modelRegionalTempHUC(tempDataSyncS, data.fixed=data.fixed, data.random.sites=data.random.sites, data.random.years=data.random.years, n.burn = 1000, n.it = 1000, n.thin = 1, nc = 3, coda = coda.tf, param.list = monitor.params))
+```
+
+Head and Structure for Jeff
+
+```{r MCMC head and str}
+head(M.huc)
+str(M.huc)
+```
+
+Save the output locally and check for model convergence and model fit. **For the Web App it might be good to save this somewhere to look at but I can't imagine it being too messed up as long as the model is run for a large area**. We will definitely need the plots and should save the MCMC output when running the model for publication. It is a marginally large file when run for all the data. I don't think we'd need to save multiple versions (i.e. it can be over written when we update the model) with the exception of ones used in publication. Otherwise we could focus on saving the summary of the chains potentially.
+
+This MCMC List is best saved as an RData file given it's unique structure. However, if we need it in a more standard (rectangular) format, I can unlist it and merge it into a 
+
+```{r save mcmc list}
+save(M.huc, file = paste0(dataLocalDir, "northeast-mcmc.RData"))
+```
+
+## Evaluate MCMC Iterations
+```{r check model convergence and mixing eval=FALSE}
+ggs.huc <- ggs(M.huc)
+ggmcmc(ggs.huc, file = "graphsDir/ggmcmc-huc.pdf", family = "mu.huc", plot = c("ggs_density",  "ggs_traceplot", "ggs_running", "ggs_compare_partial", "ggs_autocorrelation", "ggs_crosscorrelation", "ggs_Rhat", "ggs_geweke", "ggs_caterpillar"))
+dev.off()
+
+# ggs_traceplot(ggs.huc, family = "mu.huc")
+```
+
+When I run for real I will have additional code to examine residuals and model fit. They are excluded in this vignette for space and time. Other vignettes will have that info. It is currently in the `conteStreamTemperature_northeast` repo.
+
+## Check model fit
+```{r check model fit eval=FALSE}
+# Add mean residuals to the dataframe
+huc.mat <- as.matrix(M.huc)
+tempDataSyncS$resid.huc <- NA
+for(i in 1:length(tempDataSyncS$temp)) {
+  tempDataSyncS$resid.huc[i] <- mean(huc.mat[ , paste0("residuals[", i, "]")])
+  }
+```
+
+<hr>
+
+## STEP 5: Model Summary
+
+Create model summaries that look like lme4 output and have mean coeficient values for predictions and validations
+
+```{r}
+system.time(summary.stats <- summary(M.huc)) # takes a long time for full dataset. look for better solution
+
+K.0 <- dim(data.fixed)[2]
+K <- dim(data.random.sites)[2]
+L <- dim(data.random.years)[2]
+J <- length(unique(tempDataSyncS$site))
+n <- dim(tempDataSyncS)[1]
+M <- length(unique(tempDataSyncS$HUC8))
+Ti <- length(unique(tempDataSyncS$year))
+
+# Make "Fixed Effects" Output like summary(lmer)
+#codaFixEf <- function (K.0, K, L, variables.fixed, variables.site, variables.year, k, summary.stats, l) {
+  fix.ef <- as.data.frame(matrix(NA, K.0+K+L, 4))
+  names(fix.ef) <- c("Mean", "Std. Error", "LCI", "UCI")
+  row.names(fix.ef) <- c(names(data.fixed), names(data.random.sites), names(data.random.years))
+  for(k in 1:K.0){
+    fix.ef[k, 1:2] <- summary.stats$statistics[paste0('B.0[',k,']') , c("Mean", "SD")]
+    fix.ef[k, 3:4] <- summary.stats$quantiles[paste0('B.0[',k,']') , c("2.5%", "97.5%")]
+  }
+  for(k in 1:K){
+    fix.ef[k+K.0, 1:2] <- summary.stats$statistics[paste0('mu.huc[',k,']') , c("Mean", "SD")]
+    fix.ef[k+K.0, 3:4] <- summary.stats$quantiles[paste0('mu.huc[',k,']') , c("2.5%", "97.5%")]
+  }
+  for(l in 1:L){
+    fix.ef[l+K.0+K, 1:2] <- summary.stats$statistics[paste0('mu.year[',l,']') , c("Mean", "SD")]
+    fix.ef[l+K.0+K, 3:4] <- summary.stats$quantiles[paste0('mu.year[',l,']') , c("2.5%", "97.5%")]
+  }
+#}
+fix.ef
+
+# Make Random Effects Output like summary(lmer)
+ran.ef.huc <- as.data.frame(matrix(NA, K, 2))
+names(ran.ef.huc) <- c("Variance", "SD")
+row.names(ran.ef.huc) <- names(data.random.sites)
+for(k in 1:K){
+  ran.ef.huc[k, 2] <- summary.stats$statistics[paste0('sigma.b.huc[',k,']') , c("Mean")]
+  ran.ef.huc[k, 1] <- ran.ef.huc[k, 2] ^ 2
+}
+ran.ef.huc
+
+B.huc <- as.data.frame(matrix(NA, M, K))
+names(B.huc) <- names(data.random.sites)
+row.names(B.huc) <- unique(tempDataSyncS$HUC8)
+for(m in 1:M){
+  for(k in 1:K){
+    B.huc[m, k] <- summary.stats$statistics[paste('B.huc[',m,',',k,']', sep=""), "Mean"]
+  }
+}
+
+# Random Sites
+ran.ef.site <- as.data.frame(matrix(NA, K, 2))
+names(ran.ef.site) <- c("Variance", "SD")
+row.names(ran.ef.site) <- names(data.random.sites)
+for(k in 1:K){
+  ran.ef.site[k, 2] <- summary.stats$statistics[paste0('sigma.b.site[',k,']') , c("Mean")]
+  ran.ef.site[k, 1] <- ran.ef.site[k, 2] ^ 2
+}
+ran.ef.site
+
+B.site <- as.data.frame(matrix(NA, M, K))
+names(B.site) <- names(data.random.sites)
+row.names(B.site) <- unique(tempDataSyncS$site8)
+for(m in 1:M){
+  for(k in 1:K){
+    B.site[m, k] <- summary.stats$statistics[paste('B.site[',m,',',k,']', sep=""), "Mean"]
+  }
+}
+
+# Make Random Effects Output like summary(lmer)
+ran.ef.year <- as.data.frame(matrix(NA, L, 2))
+names(ran.ef.year) <- c("Variance", "SD")
+row.names(ran.ef.year) <- names(data.random.years)
+for(l in 1:L){
+  ran.ef.year[l, 2] <- summary.stats$statistics[paste0('sigma.b.year[',l,']') , c("Mean")]
+  ran.ef.year[l, 1] <- ran.ef.year[l, 2] ^ 2
+}
+ran.ef.year
+
+Y <- length(unique(tempDataSyncS$year))
+B.year <- as.data.frame(matrix(NA, Y, L))
+names(B.year) <- names(data.random.years)
+row.names(B.year) <- unique(tempDataSyncS$year)
+for(y in 1:Y){
+  for(l in 1:L){
+    B.year[y, l] <- summary.stats$statistics[paste('B.year[',y,',',l,']', sep=""), "Mean"]
+  }
+}
+
+# Make correlation matrix of random huc effects
+cor.huc <- as.data.frame(matrix(NA, K, K))
+names(cor.huc) <- names(data.random.sites)
+row.names(cor.huc) <- names(data.random.sites)
+for(k in 1:K){
+  for(k.prime in 1:K){
+    cor.huc[k, k.prime] <- summary.stats$statistics[paste('rho.B.huc[',k,',',k.prime,']', sep=""), "Mean"]
+  }
+}
+cor.huc <- round(cor.huc, digits=3)
+cor.huc[upper.tri(cor.huc, diag=TRUE)] <- ''
+cor.huc
+
+# Make correlation matrix of random year effects
+cor.year <- as.data.frame(matrix(NA, L, L))
+names(cor.year) <- variables.year
+row.names(cor.year) <- variables.year
+for(l in 1:L){
+  for(l.prime in 1:L){
+    cor.year[l, l.prime] <- summary.stats$statistics[paste('rho.B.year[',l,',',l.prime,']', sep=""), "Mean"]
+  }
+}
+cor.year <- round(cor.year, digits=3)
+cor.year[upper.tri(cor.year, diag=TRUE)] <- ''
+cor.year
+
+# combine model summary results into an S4 Object
+setClass("jagsSummary",
+         representation(fixEf="data.frame",
+                        ranEf="list",
+                        ranCor="list",
+                        BSite="data.frame",
+                        BYear="data.frame"))
+
+modSummary <- new("jagsSummary")
+modSummary@fixEf <- fix.ef
+modSummary@ranEf <- list(ranSite=ran.ef.site, ranYear=ran.ef.year)
+modSummary@ranCor <- list(corSite=cor.site, corYear=cor.year)
+modSummary@BSite <- B.site
+modSummary@BYear <- B.year
+
+# modSummary <- NULL
+# modSummary$fixEf <- fix.ef
+# modSummary$ranEf <- list(ranSite=ran.ef.site, ranYear=ran.ef.year)
+# modSummary$ranCor <- list(corSite=cor.site, corYear=cor.year)
+# modSummary$BSite <- B.site
+# modSummary$BYear <- B.year
+
+modSummary
+str(modSummary)
+
+modSummary
+str(modSummary)
+
+save(modSummary, file=paste0(dataOutDir, 'modSummary.RData'))
+```
+
+Example of an output figure of percent forest cover effects on temperature
+
+```{r figures}
+# Effects of Forest
+# Plot effect of catchment forest on occurrence prob at a typical HUC10 basin # Gelman p. 44
+eff.forest <- data.frame(Forest=seq(0,100,length.out=100))
+eff.forest$forest <- as.numeric(stdCovs(eff.forest, tempDataSync, varNames=c("Forest"))$Forest)
+
+UCI <- modSummary@fixEf$UCI
+names(UCI) <- names(fixEf)
+LCI <- modSummary@fixEf$LCI
+names(LCI) <- names(fixEf)
+
+eff.forest$mean <- fixEf["intercept"] + fixEf["forest"]*eff.forest$forest
+eff.forest$lower <- fixEf["intercept"] + LCI["forest"]*eff.forest$forest
+eff.forest$upper <- fixEf["intercept"] + UCI["forest"]*eff.forest$forest
+
+ggplot(eff.forest, aes(x = Forest, y = mean)) + 
+  geom_ribbon(data=eff.forest, aes(ymin = lower, ymax = upper), fill="grey") +
+  geom_line(colour = "black", size = 1) +
+  xlab("Percent forest cover upstream") +
+  ylab("Stream temperature (C)") +
+  theme_bw() + 
+  ylim(15, 25) +
+  theme(axis.text.y = element_text(size=15),
+        axis.text.x = element_text(size=15),
+        axis.title.x = element_text(size=17, face="bold"),
+        axis.title.y = element_text(size=17, angle=90, face="bold"),
+        plot.title = element_text(size=20))
+
+```
+
+<hr>
+
+## STEP 6: Model Validation
+
+Need to do this still. Basically the same as STEP 7 just doing predictions and evaluating how well the model fits the data that was held out
+
+<hr>
+
+## STEP 7: Predictions
+
+```{r Get covariate data for predictions}
+covariateData <- readStreamTempData(timeSeries=FALSE, covariates=TRUE, dataSourceList=dataSource, fieldListTS=fields, fieldListCD='ALL', directory=dataInDir)
+springFallBPs$site <- as.character(springFallBPs$site)
+
+########## How to add BP for years without data and clip data to the sync period ??? #######
+# Join with break points
+covariateDataBP <- left_join(covariateData, springFallBPs, by=c('site', 'year'))
+# rm(covariateData)
+
+# temp hack
+climateData$site <- as.character(climateData$site)
+tempFullSync <- left_join(climateData, covariateData, by=c('site'))
+
+# Clip to syncronized season
+# tempFullSync <- filter(tempDataBP, dOY >= finalSpringBP & dOY <= finalFallBP)
+
+# temp hack
+tempFullSync <- filter(tempFullSync, dOY >= 50 & dOY <= 350)
+tempFullSync$Latitude <- tempFullSync$Latitude.x
+tempFullSync$Longitude <- tempFullSync$Longitude.x
+##################
+
+# Order by group and date
+tempFullSync <- tempFullSync[order(tempFullSync$site,tempFullSync$year,tempFullSync$dOY),] # use dplyr instead
+
+# For checking the order of tempFullSync
+tempFullSync$count <- 1:length(tempFullSync$year)
+
+tempFullSync <- tempFullSync[order(tempFullSync$count),] # just to make sure tempFullSync is ordered for the slide function
+
+# airTemp
+tempFullSync <- slide(tempFullSync, Var = "airTemp", GroupVar = "site", slideBy = -1, NewVar='airTempLagged1')
+tempFullSync <- slide(tempFullSync, Var = "airTemp", GroupVar = "site", slideBy = -2, NewVar='airTempLagged2')
+
+# prcp
+tempFullSync <- slide(tempFullSync, Var = "prcp", GroupVar = "site", slideBy = -1, NewVar='prcpLagged1')
+tempFullSync <- slide(tempFullSync, Var = "prcp", GroupVar = "site", slideBy = -2, NewVar='prcpLagged2')
+tempFullSync <- slide(tempFullSync, Var = "prcp", GroupVar = "site", slideBy = -3, NewVar='prcpLagged3')
+
+tempFullSync <- left_join(tempFullSync, tempDataSync[ , c("site", "date", "temp")], by = c("site", "date"))
+
+# Make dataframe with just variables for modeling and order before standardizing
+tempFullSync <- tempFullSync[ , c("year", "site", "date",  "FEATUREID", "HUC4", "HUC8", "HUC12", "temp", "Latitude", "Longitude", "airTemp", "airTempLagged1", "airTempLagged2", "prcp", "prcpLagged1", "prcpLagged2", "prcpLagged3", "dOY", "Forest", "Herbacious", "Agriculture", "Developed", "TotDASqKM", "ReachElevationM", "ImpoundmentsAllSqKM", "HydrologicGroupAB", "SurficialCoarseC", "CONUSWetland", "ReachSlopePCNT", "srad", "dayl", "swe")] #  "finalSpringBP", "finalFallBP", "agency", ""date","fsite", "fyear", "AgencyID" 
+
+summary(tempFullSync)
+dim(tempFullSync)
+#tempFullSync <- na.omit(tempFullSync) ####### Change this so don't take out NA in stream temperature
+dim(tempFullSync)
+
+
+# Standardize for Analysis
+
+varNames1 <- names(tempFullSync[ ,9:dim(tempFullSync)[2]])
+
+tempFullStd <- stdCovs(tempFullSync, tempDataSync, varNames1)
+tempFullSyncS <- cbind(tempFullSync[ ,c(1:8)], tempFullStd)
+
+summary(tempFullSyncS)
+tempFullSyncS[is.na(tempFullSyncS)] <- 0
+
+fixEf <- modSummary@fixEf[ ,"Mean"]
+names(fixEf) <- row.names(modSummary@fixEf)
+
+#tempFullSync <- tempFullSync[which(tempFullSync$site %in% unique(tempDataSync$site)), ]
+#tempFullSyncS <- tempFullSync[which(tempFullSyncS$site %in% unique(tempDataSync$site)), ]
+sites <- unique(tempFullSync$site)
+BSite <- modSummary@BSite
+BYear <- modSummary@BYear
+
+
+
+##########################
+
+
+tempFullSyncS$cYear <- as.character(tempFullSyncS$year)
+```
+
+
+
+**This currently won't work because I have to make site nested within HUC, which is a new change to the model**
+
+```{r predictions}
+# Split data by site-year then do predictions for those with observed stream temperature data and those without, then recombine. The problem is that sites outside of the years observed won't get the site-specific values and years with data but at different sites won't get the site-specific data.
+tempFullSyncS$siteYear <- paste0(tempFullSyncS$site, tempFullSyncS$year)
+tempDataSyncS$siteYear <- paste0(tempDataSyncS$site, tempDataSyncS$year)
+
+tempFullSiteYearS <- tempFullSyncS[which(tempFullSyncS$siteYear %in% unique(tempDataSyncS$siteYear)), ]
+tempFullMeanS <- subset(tempFullSyncS, !(tempFullSyncS$siteYear %in% unique(tempDataSyncS$siteYear)))
+
+# this will work fo MA because not predicting to any completely new sites
+tempFullSiteYearS <- filter(tempFullSyncS, filter = year %in% unique(tempDataSyncS$year))
+tempFullSiteS <- filter(tempFullSyncS, filter = !(year %in% unique(tempDataSyncS$year)))
+
+tempFullSiteYearS$tempPredicted <- modSummary@fixEf["intercept", "Mean"] +
+  BSite[tempFullSiteYearS$site, "intercept.site"] + 
+  BYear[tempFullSiteYearS$cYear, "intercept.year"] + 
+  modSummary@fixEf["lat", "Mean"]*tempFullSiteYearS$Latitude + 
+  modSummary@fixEf["lon", "Mean"]*tempFullSiteYearS$Longitude + 
+  BSite[tempFullSiteYearS$site, "airTemp"]*tempFullSiteYearS$airTemp + 
+  BSite[tempFullSiteYearS$site, "airTempLag1"]*tempFullSiteYearS$airTempLagged1 + 
+  BSite[tempFullSiteYearS$site, "airTempLag2"]*tempFullSiteYearS$airTempLagged2 + 
+  BSite[tempFullSiteYearS$site, "precip"]*tempFullSiteYearS$prcp + 
+  BSite[tempFullSiteYearS$site, "precipLag1"]*tempFullSiteYearS$prcpLagged1 + 
+  BSite[tempFullSiteYearS$site, "precipLag2"]*tempFullSiteYearS$prcpLagged2 + 
+  BSite[tempFullSiteYearS$site, "drainage"]*tempFullSiteYearS$TotDASqKM + 
+  BSite[tempFullSiteYearS$site, "forest"]*tempFullSiteYearS$Forest + 
+  BSite[tempFullSiteYearS$site, "elevation"]*tempFullSiteYearS$ReachElevationM + 
+  BSite[tempFullSiteYearS$site, "coarseness"]*tempFullSiteYearS$SurficialCoarseC + 
+  BSite[tempFullSiteYearS$site, "wetland"]*tempFullSiteYearS$CONUSWetland + 
+  BSite[tempFullSiteYearS$site, "impoundments"]*tempFullSiteYearS$ImpoundmentsAllSqKM + 
+  BSite[tempFullSiteYearS$site, "swe"]*tempFullSiteYearS$swe + 
+  BYear[tempFullSiteYearS$cYear, "dOY"]*tempFullSiteYearS$dOY + 
+  BYear[tempFullSiteYearS$cYear, "dOY2"]*((tempFullSiteYearS$dOY)^2) + 
+  BYear[tempFullSiteYearS$cYear, "dOY3"]*((tempFullSiteYearS$dOY)^3)
+
+tempFullSiteS$tempPredicted <- modSummary@fixEf["intercept", "Mean"] +
+  BSite[tempFullSiteS$site, "intercept.site"] + 
+  modSummary@fixEf["lat", "Mean"]*tempFullSiteS$Latitude + 
+  modSummary@fixEf["lon", "Mean"]*tempFullSiteS$Longitude + 
+  BSite[tempFullSiteS$site, "airTemp"]*tempFullSiteS$airTemp + 
+  BSite[tempFullSiteS$site, "airTempLag1"]*tempFullSiteS$airTempLagged1 + 
+  BSite[tempFullSiteS$site, "airTempLag2"]*tempFullSiteS$airTempLagged2 + 
+  BSite[tempFullSiteS$site, "precip"]*tempFullSiteS$prcp + 
+  BSite[tempFullSiteS$site, "precipLag1"]*tempFullSiteS$prcpLagged1 + 
+  BSite[tempFullSiteS$site, "precipLag2"]*tempFullSiteS$prcpLagged2 + 
+  BSite[tempFullSiteS$site, "drainage"]*tempFullSiteS$TotDASqKM + 
+  BSite[tempFullSiteS$site, "forest"]*tempFullSiteS$Forest + 
+  BSite[tempFullSiteS$site, "elevation"]*tempFullSiteS$ReachElevationM + 
+  BSite[tempFullSiteS$site, "coarseness"]*tempFullSiteS$SurficialCoarseC + 
+  BSite[tempFullSiteS$site, "wetland"]*tempFullSiteS$CONUSWetland + 
+  BSite[tempFullSiteS$site, "impoundments"]*tempFullSiteS$ImpoundmentsAllSqKM + 
+  BSite[tempFullSiteS$site, "swe"]*tempFullSiteS$swe + 
+  modSummary@fixEf["dOY", "Mean"]*tempFullSiteS$dOY + 
+  modSummary@fixEf["dOY2", "Mean"]*((tempFullSiteS$dOY)^2) + 
+  modSummary@fixEf["dOY3", "Mean"]*((tempFullSiteS$dOY)^3)
+
+
+tempFullS <- rbind(tempFullSiteYearS, tempFullSiteS)
+
+tempFull <- left_join(tempFullSync, tempFullS[ , c("year", "site", "date", "tempPredicted")], by = c("year", "site", "date")) 
+
+save(tempFullS, tempFull, modSummary, file = "localData/model-summary-predictions.RData")
+
+```
+
+```{r}
+# plot observed and predicte vs day of the year for all sites in all years
+sites <- unique(as.character(tempFull$site))
+
+for(i in 1:length(unique(tempFull$site))){
+  dataSite <- filter(tempFull, filter = site == sites[i])
+  dataSiteObs <- filter(tempDataSync, filter = site == sites[i])
+  foo <- ggplot(dataSite, aes(dOY, tempPredicted)) + 
+    coord_cartesian(xlim = c(100, 300), ylim = c(0, 35)) + 
+    geom_point(data=dataSiteObs, aes(dOY, temp), colour='blue') +
+    geom_point(colour = 'red', size=1) + 
+    geom_line(colour = 'red', size=0.1) + 
+    geom_point(aes(dOY, airTemp), size=1) + 
+    ggtitle(dataSite$site[i]) + 
+    facet_wrap(~year) + 
+    xlab(label = 'Day of the year') + ylab('Temperature (C)') + 
+    theme(axis.text.x = element_text(angle = 45))
+  ggsave(filename=paste0(dataLocalDir,'/', 'plots/fullRecord/', dataSite$site[i], '.png'), plot=foo, dpi=300 , width=12,height=8, units='in' )
+} # surprisingly fast but wouldn't do for all catchments
+
+yearPredict <- filter(tempFull, site == "MADEP_W0989_T1", year == "2005")
+dataSiteObs <- filter(tempDataSync, filter = site == "MADEP_W0989_T1")
+foo <- ggplot(yearPredict, aes(dOY, tempPredicted)) + 
+  coord_cartesian(xlim = c(50, 350), ylim = c(0, 30)) +
+  geom_point(aes(dOY, airTemp), colour = 'red') + 
+  geom_point(data=dataSiteObs, aes(dOY, temp), colour='black') +
+  #geom_point(colour = 'red', size=1) + 
+  #geom_line(colour = 'red', size=0.1) + 
+  #ggtitle(dataSite$site[i]) + 
+  facet_wrap(~year) + 
+  xlab(label = 'Day of the year') + ylab('Temperature (C)') + 
+  theme(axis.text.x = element_text(angle = 45))
+ggsave(filename=paste0(baseDir, "presentations/yearTemp.png"), plot=foo, dpi=300, width=12, height=8, units="in")
+
+
+# use plotPredict function
+plotPredict(observed = tempDataSync, predicted = tempFull, siteList = "ALL", yearList = "ALL", dir = paste0(dataLocalDir,'/', 'plots/fullRecord/'))
+
+
+yearPredict <- filter(tempFull, site == "MADEP_W0989_T1", year == "2005")
+dataSiteObs <- filter(tempDataSync, filter = site == "MADEP_W0989_T1")
+foo <- ggplot(yearPredict, aes(dOY, tempPredicted)) + 
+  coord_cartesian(xlim = c(50, 350), ylim = c(0, 30)) + 
+  geom_point(data=dataSiteObs, aes(dOY, temp), colour = 'black') +
+  geom_point(colour = 'blue') + 
+  geom_line(colour = 'blue', size=0.2) + 
+  geom_point(aes(dOY, airTemp), colour = 'red') + 
+  #ggtitle(dataSite$site[i]) + 
+  facet_wrap(~year) + 
+  xlab(label = 'Day of the year') + ylab('Temperature (C)') + 
+  theme(axis.text.x = element_text(angle = 45))
+ggsave(filename="C:/Users/dhocking/Documents/temperatureProject/presentations/yearPredict.png", plot=foo, dpi=300, width=12, height=8, units="in")
+
+
+yearPredict <- filter(tempFull, site == "MADEP_W0989_T1", year > 2001 & year <= 2013)
+dataSiteObs <- filter(tempDataSync, filter = site == "MADEP_W0989_T1")
+foo <- ggplot(yearPredict, aes(dOY, tempPredicted)) + 
+  coord_cartesian(xlim = c(100, 300), ylim = c(0, 30)) + 
+  geom_point(data=dataSiteObs, aes(dOY, temp), colour='black') +
+  geom_point(colour = 'blue', size=1) + 
+  geom_line(colour = 'blue', size=0.1) + 
+  geom_point(aes(dOY, airTemp), size=1, colour='red') + 
+  #ggtitle(dataSite$site[i]) + 
+  facet_wrap(~year) + 
+  xlab(label = 'Day of the year') + ylab('Temperature (C)') + 
+  theme(axis.text.x = element_text(angle = 45))
+ggsave(filename="C:/Users/dhocking/Documents/temperatureProject/presentations/multiYearPredict.png", plot=foo, dpi=300, width=12, height=8, units="in")
+
+
+
+
+# plot observed and predicte vs day of the year for all sites
+sites <- unique(tempDataSync$site)
+
+for(i in 1:length(unique(tempDataSync$site))){
+  dataSiteObs <- filter(tempDataSync, filter = site == sites[i])
+  foo <- ggplot(dataSiteObs, aes(dOY, temp)) + coord_cartesian(xlim = c(50, 350), ylim = c(0, 30)) + geom_point(colour = 'blue') + geom_line(colour = 'blue') + geom_point(aes(dOY, streamTempPred), colour = 'red', size=1) + geom_line(aes(dOY, streamTempPred), colour = 'red', size=0.1) + geom_point(aes(dOY, airTemp), colour='black', size=1) + ggtitle(unique(tempDataSync$fsite)[i]) + facet_wrap(~year) + xlab(label = 'Day of the year') + ylab('Temperature (C)')
+  ggsave(filename=paste0(dataLocalDir,'/', 'plots/', unique(tempDataSync$fsite)[i], '.png'), plot=foo, dpi=300 , width=6,height=4, units='in' )
+} # surprisingly fast
+
+rmse(tempFull[which(!is.na(tempFull$temp)), "temp"] - tempFull[!is.na(tempFull$temp), "tempPredicted"])
+```
+
+###Derived metrics
+```{r}
+
+# Mean maximum daily mean temperature by site (over years)
+bySite <- group_by(tempFull, site)
+bySiteYear <- group_by(bySite, year, add = TRUE)
+maxTemp <- filter(bySite, tempPredicted == max(tempPredicted))
+maxTempSite <- summarise(maxTemp, mean(tempPredicted)) # not needed - already max.t
+#summarise(by.site.year, sd(mean(tempPredicted))) # not working based on filter or grouping
+
+(maxTempSiteYear <- summarise(bySiteYear, max(tempPredicted)))
+names(maxTempSiteYear) <- c("site", "year", "maxTempPredicted")
+derivedSiteMetrics <- summarise(maxTempSiteYear, meanMaxTemp = mean(maxTempPredicted))
+# maxTempSiteYear1 <- left_join(as.data.frame(maxTempSiteYear), tempFull, by=c("site", "tempPredicted"))
+
+# Maximum max daily mean temperature
+maxMaxTemp <- bySiteYear %>%
+  summarise(maxTemp = max(tempPredicted)) %>%
+  summarise(maxMaxTemp = max(maxTemp))
+
+derivedSiteMetrics <- left_join(derivedSiteMetrics, maxMaxTemp, by = "site")
+
+# ggplot(tempFull, aes(dOY, temp)) + geom_point(size=1, colour='black') + geom_point(aes(dOY, tempPredicted), colour = 'red', size=0.75) + ylab(label="Stream temperature (C)") + xlab("Day of the year") + geom_point(data=maxTempSiteYear1, aes(dOY, tempPredicted), colour = "green") + facet_grid(site ~ year) # max temp points all replicated on every panel
+
+# Number of days with stream temp > 18C
+meanDays18 <- bySiteYear %>%
+  filter(tempPredicted > 18) %>%
+  summarise(days18 = n()) %>%
+  summarise(meanDays18 = mean(days18))
+
+derivedSiteMetrics <- left_join(derivedSiteMetrics, meanDays18, by = "site")
+
+# Number of years with mean maximum over 18 C
+yearsMaxTemp18 <- summarise(
+  filter(summarise(bySiteYear, maxTemp = max(tempPredicted)), maxTemp > 18),
+  yearsMaxTemp18 = n()
+)
+derivedSiteMetrics <- left_join(derivedSiteMetrics, yearsMaxTemp18, by = "site")
+
+# frequency of years with a mean max over 18 C
+derivedSiteMetrics <- mutate(derivedSiteMetrics, freqMax18 = yearsMaxTemp18/length(unique(bySiteYear$year)))
+
+# Resistance to peak air temperature
+## Need to think of a way to make more general rather than by specific dOY (60 day max moving window air temp?)
+meanResist <- bySiteYear %>%
+  filter(dOY >= 145 & dOY <= 275) %>%
+  mutate(absResid = abs(airTemp - tempPredicted)) %>%
+  summarise(resistance = sum(absResid)) %>%
+  summarise(meanResist = mean(resistance))
+
+derivedSiteMetrics <- left_join(derivedSiteMetrics, meanResist, by = "site")
+
+
+WB.2011.summer <- tempFull[which(tempFull$site == "MAUSGS_WEST_BROOK" & tempFull$year == 2011 & tempFull$dOY >=145 & tempFull$dOY <= 275), ]
+sum(WB.2011.summer$airTemp - WB.2011.summer$tempPredicted)
+
+ggplot(tempFull[which(tempFull$site == "MAUSGS_WEST_BROOK" & tempFull$year == 2011), ], aes(dOY, tempPredicted)) + 
+  geom_point(size=2, colour = "red") + geom_line(colour = 'red') +
+  geom_point(data=tempFull[which(tempFull$site == "MAUSGS_WEST_BROOK" & tempFull$year == 2011), ], aes(dOY, airTemp), colour = "black", size=2) + 
+  geom_line(data=tempFull[which(tempFull$site == "MAUSGS_WEST_BROOK" & tempFull$year == 2011), ], aes(dOY, airTemp), colour = "black") + 
+  geom_ribbon(data = tempFull[which(tempFull$site == "MAUSGS_WEST_BROOK" & tempFull$year == 2011 & tempFull$dOY >=145 & tempFull$dOY <= 275), ], aes(x=dOY, ymin=tempPredicted, ymax=airTemp), fill="dark grey", alpha=.5) +
+  xlab("Day of the year") +
+  ylab("Temperature (C)") #+ theme_classic()
+
+ggplot(tempFull[which(tempFull$site == "WB OBEAR" & tempFull$year == 2010), ], aes(dOY.real, tempPredicted)) + 
+  geom_point(size=2, colour = "black") + geom_line(colour = 'black') +
+  geom_abline(intercept = 18, slope=0, colour='red') +
+  geom_point(data = tempFull[which(tempFull$site == "WB OBEAR" & tempFull$year == 2010 & tempFull$tempPredicted >= 18), ], aes(dOY.real, tempPredicted), colour='red') +
+  xlab("Day of the year") +
+  ylab("Stream temperature (C)") #+ theme_classic()
+
+# Reset ggplot2 theme default to gray
+theme_set(theme_gray())
+
+
+
+# Air-Water Resiliency
+
+# RMSE for each site (flag highest)
+meanRMSE <- bySiteYear %>%
+  filter(!(is.na(temp))) %>%
+  mutate(error2 = (temp - tempPredicted)^2) %>%
+  summarise(RMSE = sqrt(mean(error2))) %>%
+  summarise(meanRMSE = mean(RMSE))
+
+derivedSiteMetrics <- left_join(derivedSiteMetrics, meanRMSE, by = "site")
+
+# total observations (days with data) per site
+totObs <- bySiteYear %>%
+  filter(!is.na(temp)) %>%
+  summarise(Obs = n()) %>%
+  summarise(totObs = sum(Obs))
+
+derivedSiteMetrics <- left_join(derivedSiteMetrics, totObs, by = "site")
+
+# Flag based on RMSE > 90%
+derivedSiteMetrics <- mutate(derivedSiteMetrics, flag = ifelse(meanRMSE > quantile(derivedSiteMetrics$meanRMSE, probs = c(0.9), na.rm=TRUE), "Flag", ""))
+
+summary(derivedSiteMetrics)
+
+derivedSiteMetricsClean <- na.omit(derivedSiteMetrics)
+write.table(derivedSiteMetricsClean, file = 'reports/MADEP/derivedSiteMetrics.csv', sep=',', row.names = F)
+
+```
+
+
+
+
+
+
+
+
+
+
+
