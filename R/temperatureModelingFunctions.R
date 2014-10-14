@@ -281,12 +281,30 @@ predictSlopes <- function(inputDF, outputDF){
   return(out)
 }
 
-# Function that returns Root Mean Squared Error
+#' @title rmse: root mean squared error
+#'
+#' @description
+#' \code{rmse} returns root mean squared error
+#'
+#'@param error Vector of residual error from a model
+#' @details
+#' var: blah, blah, blah
+#' value: something, something
+#' @export
 rmse <- function(error) {
   sqrt(mean(error^2))
 }
 
-# Function that returns Mean Absolute Error
+#' @title mae: root mean squared error
+#'
+#' @description
+#' \code{mae} returns mean absolute error
+#'
+#'@param error Vector of residual error from a model
+#' @details
+#' var: blah, blah, blah
+#' value: something, something
+#' @export
 mae <- function(error) {
   mean(abs(error))
 }
