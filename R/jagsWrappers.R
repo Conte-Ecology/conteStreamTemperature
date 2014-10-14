@@ -295,13 +295,26 @@ modelRegionalTempWB <- function(data = tempDataSyncS, data.fixed, data.random.ye
 {
   sink("code/modelRegionalTempWB.txt")
   cat("
-      model{
-      # Likelihood
-      for(i in 1:n){ # n observations
-      temp[i] ~ dnorm(stream.mu[i], tau)
-      stream.mu[i] <- inprod(B.0[], X.0[i, ]) + inprod(B.year[year[i], ], X.year[i, ]) #  
-      }
+       model{
+#       # Likelihood
+#       for(i in 1:n){ # n observations
+#       temp[i] ~ dnorm(stream.mu[i], tau)
+#       stream.mu[i] <- inprod(B.0[], X.0[i, ]) + inprod(B.year[year[i], ], X.year[i, ]) #  
+#       }
+
+      # Likelihood w ar1
+      temp[1] ~ dnorm(stream.mu[1], tau) 
+      stream.mu[1] <- trend[1]
+      trend[1] <- inprod(B.0[], X.0[1, ]) + inprod(B.year[year[1], ], X.year[1, ])
       
+      for(i in 2:n){ # n observations
+        temp[i] ~ dnorm(stream.mu[i], tau)
+        stream.mu[i] <- trend[ i ] + ar1 * (temp[i-1] - trend[ i-1 ]) #residuals[ i - 1 ] #  
+        trend[ i ]  <- inprod(B.0[], X.0[i, ]) + inprod(B.year[year[i], ], X.year[i, ])
+      }
+      ar1 ~ dunif(-1,1)
+      #ar1 ~ dunif(-0.001,0.001) #turn off ar1
+
       # prior for model variance
       sigma ~ dunif(0, 100)
       tau <- pow(sigma, -2)
@@ -332,7 +345,8 @@ modelRegionalTempWB <- function(data = tempDataSyncS, data.fixed, data.random.ye
       }
       
       # Derived parameters
-      for(i in 1:n) {
+      residuals[1] <- 0 # hold the place. Not sure if this is necessary...
+      for(i in 2:n) {
       residuals[i] <- temp[i] - stream.mu[i]
       }
       }
