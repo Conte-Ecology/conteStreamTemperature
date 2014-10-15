@@ -566,6 +566,7 @@ if(runParallel) {
 #' M.wb <- modelRegionalTempWB(data=DF, data.fixed = DF.fixed, data.random.years = DF.years, n.burn = 1000, n.it = 1000, n.thin = 1, nc = 3, coda = coda.tf, param.list = monitor.params)
 #' }
 #' @export
+
 modelRegionalTempWB <- function(data = tempDataSyncS, data.fixed, data.random.years, param.list, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3, coda = FALSE, runParallel = TRUE) {
   #  temp.model <- function(){
 {
@@ -579,24 +580,33 @@ modelRegionalTempWB <- function(data = tempDataSyncS, data.fixed, data.random.ye
 #       }
 
       # Likelihood w ar1
-      temp[1] ~ dnorm(stream.mu[1], tau) 
-      stream.mu[1] <- trend[1]
-      trend[1] <- inprod(B.0[], X.0[1, ]) + inprod(B.year[year[1], ], X.year[1, ])
-      
-      for(i in 2:n){ # n observations
-        temp[i] ~ dnorm(stream.mu[i], tau)
-        stream.mu[i] <- trend[ i ] + ar1 * (temp[i-1] - trend[ i-1 ]) #residuals[ i - 1 ] #  
-        trend[ i ]  <- inprod(B.0[], X.0[i, ]) + inprod(B.year[year[i], ], X.year[i, ])
+      for(i in 1:nFirstObsRows){      
+        temp[firstObsRows[i]] ~ dnorm(stream.mu[firstObsRows[i]], tau) 
+        stream.mu[firstObsRows[i]] <- trend[firstObsRows[i]]
+        trend[firstObsRows[i]] <- inprod(B.0[], X.0[firstObsRows[i], ]) + inprod(B.year[year[firstObsRows[i]], ], X.year[firstObsRows[i], ])
       }
-      ar1 ~ dunif(-1,1)
-      #ar1 ~ dunif(-0.001,0.001) #turn off ar1
+
+      for(i in 1:nEvalRows){ # n observations
+        temp[evalRows[i]] ~ dnorm(stream.mu[evalRows[i]], tau)
+        stream.mu[evalRows[i]] <- trend[ evalRows[i] ] + ar1 * (temp[evalRows[i]-1] - trend[ evalRows[i]-1 ])   
+        trend[ evalRows[i] ]  <- inprod(B.0[], X.0[evalRows[i], ]) + inprod(B.year[year[evalRows[i]], ], X.year[evalRows[i], ])
+      }
+      
+#      for( i in 1:nSite ){
+#        ar1[i] ~ dnorm( ar1Mean, pow(ar1SD,-2) ) T(-1,1)       
+        ar1 ~ dunif(-1,1)
+#        #ar1 ~ dunif(-0.001,0.001) #turn off ar1
+#      }
+
+#      ar1Mean ~ dunif( -1,1 ) #T(-1,1) # 1.5 gives a range of ~ -1.5 to 1.5
+#      ar1SD ~ dunif( 0, 2 )
 
       # prior for model variance
       sigma ~ dunif(0, 100)
       tau <- pow(sigma, -2)
       
       for(k in 1:K.0){
-      B.0[k] ~ dnorm(0, 0.001) # priors coefs for fixed effect predictors
+        B.0[k] ~ dnorm(0, 0.001) # priors coefs for fixed effect predictors
       }
       
       # YEAR EFFECTS
@@ -651,7 +661,14 @@ data.list <- list(n = n,
                   temp = data$temp,
                   X.year = as.matrix(X.year),
                   site = as.factor(data$site),
-                  year = as.factor(data$year))
+                  year = as.factor(data$year),
+                  dOYInt = data$dOYInt,
+                  nSite = length(unique(data$site)),
+                  evalRows = evalRows$rowNum,
+                  firstObsRows = firstObsRows$rowNum,
+                  nEvalRows = length(evalRows$rowNum),
+                  nFirstObsRows = length(firstObsRows$rowNum)
+                  )
 
 inits <- function(){
   list(#B.raw = array(rnorm(J*K), c(J,K)), 
