@@ -46,7 +46,7 @@ modelRegionalTempAR1 <- function(data = tempDataSyncS, data.fixed, data.random.s
             inprod(B.huc[huc[i], ], X.site[i, ]) + 
             inprod(B.year[year[i], ], X.year[i, ])
           
-          stream.mu[i] <- trend[i] + B.ar1 * (temp[i-1] - trend[i-1])
+          stream.mu[i] <- trend[i] + B.ar1[site[i]] * (temp[i-1] - trend[i-1])
         }
       }
       
@@ -56,7 +56,13 @@ modelRegionalTempAR1 <- function(data = tempDataSyncS, data.fixed, data.random.s
       }
       
       # Prior for autoregressive
-      B.ar1 ~ dunif(-1, 1)
+      #B.ar1 ~ dunif(-1, 1)
+      for(j in 1:J){ # J sites
+        B.ar1[j] ~ dnorm(mu.ar1, tau.ar1)T(-1, 1)
+      }
+      mu.ar1 ~ dunif(-1, 1)
+      sigma.ar1 ~ dunif(0, 10)
+      tau.ar1 <- pow(sigma.ar1, -2)
       
       # prior for model variance
       sigma ~ dunif(0, 100)
