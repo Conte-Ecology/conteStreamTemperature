@@ -588,18 +588,19 @@ modelRegionalTempWB <- function(data = tempDataSyncS, data.fixed, data.random.ye
 
       for(i in 1:nEvalRows){ # n observations
         temp[evalRows[i]] ~ dnorm(stream.mu[evalRows[i]], tau)
-        stream.mu[evalRows[i]] <- trend[ evalRows[i] ] + ar1 * (temp[evalRows[i]-1] - trend[ evalRows[i]-1 ])   
+#        stream.mu[evalRows[i]] <- trend[ evalRows[i] ] + ar1 * (temp[evalRows[i]-1] - trend[ evalRows[i]-1 ]) 
+        stream.mu[evalRows[i]] <- trend[ evalRows[i] ] + ar1[river[ evalRows[i] ]] * (temp[evalRows[i]-1] - trend[ evalRows[i]-1 ])
         trend[ evalRows[i] ]  <- inprod(B.0[], X.0[evalRows[i], ]) + inprod(B.year[year[evalRows[i]], ], X.year[evalRows[i], ])
       }
       
-#      for( i in 1:nSite ){
-#        ar1[i] ~ dnorm( ar1Mean, pow(ar1SD,-2) ) T(-1,1)       
-        ar1 ~ dunif(-1,1)
-#        #ar1 ~ dunif(-0.001,0.001) #turn off ar1
-#      }
+      for( i in 1:nRiver ){
+        ar1[i] ~ dnorm( ar1Mean, pow(ar1SD,-2) ) T(-1,1)       
+#        ar1 ~ dunif(-1,1)
+        #ar1 ~ dunif(-0.001,0.001) #turn off ar1
+      }
 
-#      ar1Mean ~ dunif( -1,1 ) #T(-1,1) # 1.5 gives a range of ~ -1.5 to 1.5
-#      ar1SD ~ dunif( 0, 2 )
+      ar1Mean ~ dunif( -1,1 ) 
+      ar1SD ~ dunif( 0, 2 )
 
       # prior for model variance
       sigma ~ dunif(0, 100)
@@ -612,11 +613,11 @@ modelRegionalTempWB <- function(data = tempDataSyncS, data.fixed, data.random.ye
       # YEAR EFFECTS
       # Priors for random effects of year
       for(t in 1:Ti){ # Ti years
-      B.year[t, 1:L] ~ dmnorm(mu.year[ ], tau.B.year[ , ])
+        B.year[t, 1:L] ~ dmnorm(mu.year[ ], tau.B.year[ , ])
       }
       mu.year[1] <- 0
       for(l in 2:L){
-      mu.year[l] ~ dnorm(0, 0.0001)
+        mu.year[l] ~ dnorm(0, 0.0001)
       }
       
       # Prior on multivariate normal std deviation
@@ -624,18 +625,18 @@ modelRegionalTempWB <- function(data = tempDataSyncS, data.fixed, data.random.ye
       df.year <- L + 1
       sigma.B.year[1:L, 1:L] <- inverse(tau.B.year[ , ])
       for(l in 1:L){
-      for(l.prime in 1:L){
-      rho.B.year[l, l.prime] <- sigma.B.year[l, l.prime]/sqrt(sigma.B.year[l, l]*sigma.B.year[l.prime, l.prime])
-      }
-      sigma.b.year[l] <- sqrt(sigma.B.year[l, l])
+        for(l.prime in 1:L){
+          rho.B.year[l, l.prime] <- sigma.B.year[l, l.prime]/sqrt(sigma.B.year[l, l]*sigma.B.year[l.prime, l.prime])
+        }
+        sigma.b.year[l] <- sqrt(sigma.B.year[l, l])
       }
       
       # Derived parameters
       residuals[1] <- 0 # hold the place. Not sure if this is necessary...
       for(i in 2:n) {
-      residuals[i] <- temp[i] - stream.mu[i]
+        residuals[i] <- temp[i] - stream.mu[i]
       }
-      }
+    }
       ",fill = TRUE)
   sink()
 } # sink needs to be wrapped in expression for knitr to work
@@ -661,9 +662,11 @@ data.list <- list(n = n,
                   temp = data$temp,
                   X.year = as.matrix(X.year),
                   site = as.factor(data$site),
+                  river = as.factor(data$riverOrdered),
                   year = as.factor(data$year),
                   dOYInt = data$dOYInt,
                   nSite = length(unique(data$site)),
+                  nRiver = length(unique(data$riverOrdered)),
                   evalRows = evalRows$rowNum,
                   firstObsRows = firstObsRows$rowNum,
                   nEvalRows = length(evalRows$rowNum),
