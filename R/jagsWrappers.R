@@ -51,7 +51,7 @@ modelRegionalTempAR1 <- function(data = tempDataSyncS, data.fixed, data.random.s
         }
       
       for(i in 1:n) {
-        temp[i] ~ dnorm(stream.mu[i], tau)T(0, 50)
+        temp[i] ~ dnorm(stream.mu[i], tau) # T(0, 50) - truncation causes MCMC problem: no mixing/movement
         residuals[i] <- temp[i] - stream.mu[i]
       }
       
