@@ -25,33 +25,33 @@
 #' M.ar <- modelRegionalTempAR(data, data.fixed, data.random.sites, data.random.years, n.burn = 1000, n.it = 1000, n.thin = 1, nc = 3, coda = coda.tf, param.list = monitor.params)
 #' }
 #' @export
-modelRegionalTempAR1 <- function(data = tempDataSyncS, data.fixed, data.random.sites, data.random.years, deployments = deploy.vect, param.list, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3, coda = FALSE, runParallel = TRUE) {
+modelRegionalTempAR1 <- function(data = tempDataSyncS, data.fixed, data.random.sites, data.random.years, firstObsRows = firstObsRows, evalRows = evalRows, param.list, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3, coda = FALSE, runParallel = TRUE) {
   #  temp.model <- function(){
 {
   sink("code/modelRegionalTempAR1.txt")
   cat("
     model{
       # Likelihood
-      for(j in 1:(length(deploy.vect)-1)) {
-        trend[deploy.vect[j]] <- inprod(B.0[], X.0[deploy.vect[j], ]) + 
-          inprod(B.site[site[deploy.vect[j]], ], X.site[deploy.vect[j], ]) + 
-          inprod(B.huc[huc[deploy.vect[j]], ], X.site[deploy.vect[j], ]) + 
-          inprod(B.year[year[deploy.vect[j]], ], X.year[deploy.vect[j], ])
-        stream.mu[deploy.vect[j]] <- trend[deploy.vect[j]]
+      for(i in 1:nFirstObsRows) {
+        trend[firstObsRows[i]] <- inprod(B.0[], X.0[firstObsRows[i], ]) + 
+          inprod(B.site[site[firstObsRows[i]], ], X.site[firstObsRows[i], ]) + 
+          inprod(B.huc[huc[firstObsRows[i]], ], X.site[firstObsRows[i], ]) + 
+          inprod(B.year[year[firstObsRows[i]], ], X.year[firstObsRows[i], ])
 
+        stream.mu[firstObsRows[i]] <- trend[firstObsRows[i]]
+}
         # restart counter for each deployment
-        for(i in (1+deploy.vect[j]):(deploy.vect[j+1] - 1)){
-          trend[i] <- inprod(B.0[], X.0[i, ]) + 
-            inprod(B.site[site[i], ], X.site[i, ]) + 
-            inprod(B.huc[huc[i], ], X.site[i, ]) + 
-            inprod(B.year[year[i], ], X.year[i, ])
+        for(i in 1:nEvalRows) {
+          trend[evalRows[i]] <- inprod(B.0[], X.0[evalRows[i], ]) + 
+            inprod(B.site[site[evalRows[i]], ], X.site[evalRows[i], ]) + 
+            inprod(B.huc[huc[evalRows[i]], ], X.site[evalRows[i], ]) + 
+            inprod(B.year[year[evalRows[i]], ], X.year[evalRows[i], ])
           
-          stream.mu[i] <- trend[i] + B.ar1[site[i]] * (temp[i-1] - trend[i-1])
+          stream.mu[evalRows[i]] <- trend[evalRows[i]] + B.ar1[site[evalRows[i]]] * (temp[evalRows[i]-1] - trend[evalRows[i]-1])
         }
-      }
       
       for(i in 1:n) {
-        temp[i] ~ dnorm(stream.mu[i], tau)
+        temp[i] ~ dnorm(stream.mu[i], tau) # T(0, 50) - truncation causes MCMC problem: no mixing/movement
         residuals[i] <- temp[i] - stream.mu[i]
       }
       
@@ -169,7 +169,10 @@ data.list <- list(n = n,
                   W.year = W.year,
                   W.huc = W.huc,
                   temp = data$temp,
-                  deploy.vect = deployments,
+                  evalRows = evalRows$rowNum,
+                  nEvalRows = length(evalRows$rowNum),
+                  firstObsRows = firstObsRows$rowNum,
+                  nFirstObsRows = length(firstObsRows$rowNum),
                   X.site = X.site, #as.matrix(X.site),
                   X.year = as.matrix(X.year),
                   site = as.factor(data$site),
