@@ -581,8 +581,8 @@ modelRegionalTempWB <- function(data = tempDataSyncS, data.fixed, data.random.ye
        model{
 #       # Likelihood
 #       for(i in 1:n){ # n observations
-#       temp[i] ~ dnorm(stream.mu[i], tau)
-#       stream.mu[i] <- inprod(B.0[], X.0[i, ]) + inprod(B.year[year[i], ], X.year[i, ]) #  
+#         temp[i] ~ dnorm(stream.mu[i], tau)
+#         stream.mu[i] <- inprod(B.0[], X.0[i, ]) + inprod(B.year[year[i], ], X.year[i, ]) #  
 #       }
 
       # Likelihood w ar1
