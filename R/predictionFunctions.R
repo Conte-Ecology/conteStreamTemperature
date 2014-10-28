@@ -1,3 +1,99 @@
+#' @title predictTemp: Predict conditional daily temperatures for observed or unobserved sites
+#'
+#' @description
+#' \code{predictTemp} Predict daily stream temperatures
+#'
+#' @param data Data frame of covariates for prediction
+#' @param data.fit Data frame used for fitting (calibrating) the JAGS model
+#' @param firstObsRows Dataframe with the rowNum column indicating the rows where a logger was first deployed
+#' @param evalRows Dataframe with the rowNum column indicating the rows during a deployment after the first day for use in the autoregressive
+#' @param B.fixed Dataframe of fixed effect coefficients
+#' @param B.site Dataframe of random site coefficients
+#' @param B.huc Dataframe of random huc coefficients
+#' @param B.year Dataframe of random year coeffcients
+#' @param B.ar1 Dataframe of AR1 coeffcients by random site
+#' @return Numeric vector of predicted daily stream temperatures
+#' @details
+#' The predictions are all conditional on site, HUC8, and year when the data is available and predicts the mean values when any component was not used in the fitting (not in the calibration dataset)
+#' @examples
+#' 
+#' \dontrun{
+#' Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, firstObsRows = firstObsRows, evalRows = evalRows, B.fixed = B.fixed, B.site = B.site, B.huc = B.huc, B.year = B.year, B.ar1 = B.ar1))
+#' }
+#' @export
+predictTemp <- function(data, data.fit = tempDataSyncS, firstObsRows = firstObsRows, evalRows = evalRows, B.fixed = B.fixed, B.site = B.site, B.huc = B.huc, B.year = B.year, B.ar1 = B.ar1) {
+  
+  df <- prepDF(data)
+  
+  if(!(identical(data, data.fit))) {
+    site.new <- data %>%
+      dplyr::filter(!(site %in% levels(as.factor(data.fit$site)))) %>%
+      dplyr::select(site)
+    B.site.new <- expand.grid(site = levels(as.factor(site.new$site)), coef = levels(B.site$coef))
+    B.site.new$mean <- 0
+    B.site <- rbind(B.site[ , c("site", "coef", "mean")], B.site.new[ , c("site", "coef", "mean")])
+    
+    huc.new <- data %>%
+      dplyr::filter(!(HUC8 %in% levels(as.factor(data.fit$HUC8)))) %>%
+      dplyr::select(huc = HUC8) 
+    B.huc.new <- expand.grid(huc = levels(as.factor(huc.new$huc)), coef = levels(B.huc$coef))
+    mu.huc <- dplyr::filter(coef.summary, grepl('^mu.huc', coef.summary$Parameter))
+    mu.huc$coef <- colnames(df$data.random.sites)
+    B.huc.new <- dplyr::left_join(mu.huc, B.huc.new, by = "coef")
+    B.huc <- rbind(B.huc[ , c("huc", "coef", "mean")], B.huc.new[ , c("huc", "coef", "mean")])
+    
+    year.new <- data %>%
+      dplyr::filter(!(year %in% levels(as.factor(data.fit$year)))) %>%
+      dplyr::select(year = year) 
+    B.year.new <- expand.grid(year = levels(as.factor(year.new$year)), coef = levels(B.year$coef))
+    mu.year <- dplyr::filter(coef.summary, grepl('^mu.year', coef.summary$Parameter))
+    mu.year$coef <- colnames(df$data.random.years)
+    B.year.new <- dplyr::left_join(mu.year, B.year.new, by = "coef")
+    B.year <- rbind(B.year[ , c("year", "coef", "mean")], B.year.new[ , c("year", "coef", "mean")])
+    
+    ar1.new <- data %>%
+      dplyr::filter(!(site %in% levels(as.factor(data.fit$site)))) %>%
+      dplyr::select(site)
+    B.ar1.new <- data.frame(site = levels(as.factor(ar1.new$site)))
+    B.ar1.new$mean <- mean(B.ar1$mean)
+    B.ar1 <- rbind(B.ar1[ , c("site", "mean")], B.ar1.new)
+  }
+  
+  Pred <- NA
+  trend <- NA
+  
+  for(i in 1:length(firstObsRows$rowNum)) {
+    trend[firstObsRows$rowNum[i]] <- as.numeric(
+      B.fixed$mean %*% t(df$data.fixed[firstObsRows$rowNum[i], ]) + 
+        dplyr::filter(B.huc, huc == as.character(data$HUC8[firstObsRows$rowNum[i]]))$mean %*% t(df$data.random.sites[firstObsRows$rowNum[i], ]) + 
+        dplyr::filter(B.site, site == as.character(data$site[firstObsRows$rowNum[i]]))$mean %*% t(df$data.random.sites[firstObsRows$rowNum[i], ]) + 
+        dplyr::filter(B.year, year == as.character(data$year[firstObsRows$rowNum[i]]))$mean %*% t(df$data.random.years[firstObsRows$rowNum[i], ])
+    )
+    
+    Pred[firstObsRows$rowNum[i]] <- trend[firstObsRows$rowNum[i]]
+  }
+  
+  for(i in 1:length(evalRows$rowNum)) {
+    trend[evalRows$rowNum[i]] <- as.numeric(
+      B.fixed$mean %*% t(df$data.fixed[evalRows$rowNum[i], ]) + 
+        dplyr::filter(B.huc, huc == as.character(data$HUC8[evalRows$rowNum[i]]))$mean %*% t(df$data.random.sites[evalRows$rowNum[i], ]) + 
+        dplyr::filter(B.site, site == as.character(data$site[evalRows$rowNum[i]]))$mean %*% t(df$data.random.sites[evalRows$rowNum[i], ]) + 
+        dplyr::filter(B.year, year == as.character(data$year[evalRows$rowNum[i]]))$mean %*% t(df$data.random.years[evalRows$rowNum[i], ]) 
+    )
+    
+    if(is.na(data$temp[evalRows$rowNum[i]-1]) | is.null(data$temp[evalRows$rowNum[i]-1])) {
+      Pred[evalRows$rowNum[i]] <- trend[evalRows$rowNum[i]]
+    } else {
+      Pred[evalRows$rowNum[i]] <- trend[evalRows$rowNum[i]] + 
+        dplyr::filter(B.ar1, site == as.character(data$site[evalRows$rowNum[i]]))$mean * (data$temp[evalRows$rowNum[i]-1] - trend[evalRows$rowNum[i]-1])
+    }
+    #as.numeric(B.ar1$mean * (data$temp[evalRows$rowNum[i]-1] - trend[evalRows$rowNum[i]-1]))
+  }
+  
+  return(Pred)
+}
+
+
 #' @title Plot observed and predicted values of stream temperature
 #'
 #' @description
@@ -16,6 +112,7 @@
 #' \dontrun{
 #' plotPredict(observed = tempDataSync, predicted = tempFull, siteList = "ALL", yearList = "ALL", dir = paste0(dataLocalDir,'/', 'plots/fullRecord/'))
 #' }
+#' @export
 plotPredict <- function(observed, predicted, siteList = "ALL", yearList = "ALL", dir = getwd()){ # add option to not include predicted or make similar function that makes observation plots
   if(siteList == "ALL"){
     sites <- unique(as.character(predicted$site))

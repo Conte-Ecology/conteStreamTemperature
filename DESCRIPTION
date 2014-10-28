@@ -16,6 +16,7 @@ Depends:
 Imports:
     rjags,
     knitr,
+    ggmcmc,
     dplyr,
     ggplot2,
     lubridate,

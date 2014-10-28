@@ -25,7 +25,7 @@
 #' M.ar <- modelRegionalTempAR(data, data.fixed, data.random.sites, data.random.years, n.burn = 1000, n.it = 1000, n.thin = 1, nc = 3, coda = coda.tf, param.list = monitor.params)
 #' }
 #' @export
-modelRegionalTempAR1 <- function(data = tempDataSyncS, data.fixed, data.random.sites, data.random.years, firstObsRows = firstObsRows, evalRows = evalRows, param.list, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3, coda = FALSE, runParallel = TRUE) {
+modelRegionalTempAR1 <- function(data = tempDataSyncS, formulae = formulae, firstObsRows = firstObsRows, evalRows = evalRows, param.list, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3, coda = FALSE, runParallel = TRUE) {
   #  temp.model <- function(){
 {
   sink("code/modelRegionalTempAR1.txt")
@@ -134,13 +134,15 @@ modelRegionalTempAR1 <- function(data = tempDataSyncS, data.fixed, data.random.s
 # Fixed effects
 #library(dplyr)
 
-X.0 <- data.fixed
+data.cal <- prepDF(data, formulae = formulae)
+
+X.0 <- data.cal$data.fixed
 variables.fixed <- names(X.0)
 K.0 <- length(variables.fixed)
 
 
 # Random site effects
-X.site <- data.random.sites
+X.site <- data.cal$data.random.sites
 variables.site <- names(X.site)
 J <- length(unique(data$site))
 K <- length(variables.site)
@@ -151,7 +153,7 @@ M <- length(unique(data$HUC8))
 W.huc <- diag(K)
 
 # Random Year effects
-X.year <- data.random.years
+X.year <- data.cal$data.random.years
 variables.year <- names(X.year)
 Ti <- length(unique(data$year))
 L <- length(variables.year)
