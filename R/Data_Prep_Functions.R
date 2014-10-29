@@ -16,19 +16,19 @@ indexDeployments <- function(data, regional = FALSE) {
   } else {
     data <- arrange(data, site, date)
   }
+
+#  test  
+#  data1=data.frame(site=rep(1:4,each=4),date=rep(1:4))
+#  data=rbind(data1,data1[15:16,])
   
-  # Within each site, if column above doesn't equal date + 1 then start new deployment ID
-  # SLOW - consider rewriting or moving to C++
-  deployID <- NA
-  deployID[1] <- 1
-  for(i in 2:nrow(data)) {
-    if(data$site[i] == data$site[i-1] & 
-         data$date[i] == data$date[i -1] + 1) {
-      data$deployID[i] <- data$deployID[i-1]
-    } else {
-      data$deployID[i] <- data$deployID[i-1] + 1
-    }
-  } # rewrite by shifting one df down by one and comparing if equal
+    data%>%
+      mutate( siteShift = c( 1,site[ 1:(nrow(data)-1) ] ),
+              dateShift = c( 1,date[ 1:(nrow(data)-1) ] ),
+              newSite = site == siteShift + 1,
+              newDate = date != dateShift + 1,
+              newDeploy = (newSite | newDate) * 1,              
+              deployID= cumsum(newDeploy) )
+  
   return(data)
 }
 
@@ -59,3 +59,8 @@ createDeployRows <- function(data) {
   return(list(firstObsRows = firstObsRows, evalRows = evalRows)) # this can be a list or 1 dataframe with different columns
 }
 
+
+
+
+# this could go in another file. Ben stuck it here for now
+"%!in%" <- function(x,table) match(x,table, nomatch = 0) == 0
