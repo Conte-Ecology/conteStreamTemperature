@@ -84,7 +84,7 @@ createEvalRows <- function(data) {
 #' @title not in: 
 #'
 #' @description
-#' \code{!in} anti %in%
+#' \code{!in} antii %in%
 #'
 #' @param x,table
 #' @details

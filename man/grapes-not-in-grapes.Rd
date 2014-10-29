@@ -9,7 +9,7 @@ x \%!in\% table
 \item{x,table}{}
 }
 \description{
-\code{!in} anti %in%
+\code{!in} antii %in%
 }
 \details{
 var: blah, blah, blah
