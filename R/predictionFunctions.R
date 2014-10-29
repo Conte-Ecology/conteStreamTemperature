@@ -125,15 +125,18 @@ plotPredict <- function(observed, predicted, siteList = "ALL", yearList = "ALL",
     years <- yearList # add check if character vector, change if numeric, check if match any in predicted, stop with error else
   }
   
+  ###### Need to convert back to original scale or join with original DF
+  predicted.origin.scale <- left_join(observed, predicted[ , c("site", "date", "Pred")], by = c("site", "date"))
+  
   for(i in 1:length(unique(sites))){
-    dataSite <- filter(predicted, filter = site == sites[i], year == years)
-    dataSiteObs <- filter(observed, filter = site == sites[i], year == years)
-    foo <- ggplot(dataSite, aes(dOY, tempPredicted)) + 
+    dataSite <- dplyr::filter(predicted.origin.scale, filter = site == sites[i] & year %in% years)
+    #dataSiteObs <- dplyr::filter(observed, filter = site == sites[i] & year %in% years)
+    foo <- ggplot(dataSite, aes(dOY, Pred)) + 
       coord_cartesian(xlim = c(100, 300), ylim = c(0, 35)) + 
-      geom_point(data=dataSiteObs, aes(dOY, temp), colour='black') +
-      geom_point(colour = 'blue') + 
-      geom_line(colour = 'blue') + 
-      geom_point(aes(dOY, airTemp), colour = 'red') + 
+      geom_point(data=dataSite, aes(dOY, temp), colour='blue') +
+      geom_point(colour = 'red') + 
+      geom_line(colour = 'red') + 
+      geom_point(aes(dOY, airTemp), colour = 'black') + 
       ggtitle(dataSite$site[i]) + 
       facet_wrap(~year) + 
       xlab(label = 'Day of the year') + ylab('Temperature (C)') + 
@@ -141,7 +144,6 @@ plotPredict <- function(observed, predicted, siteList = "ALL", yearList = "ALL",
     ggsave(filename=paste0(dir, dataSite$site[i], '.png'), plot=foo, dpi=300 , width=12,height=8, units='in' )
   } # surprisingly fast but wouldn't do for all catchments
 }
-
 
 
 #' @title predCubic

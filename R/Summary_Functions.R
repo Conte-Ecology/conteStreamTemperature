@@ -63,14 +63,16 @@ avgCoefs <- function(ggs.obj, family = NULL) {
 #' @param coef.summary Dataframe generated with the avgCoefs function
 #' @param rand.levels Levels of the random effects factor (e.g. levels(as.factor(data$site)))
 #' @param family Character string of the coda group names to match to the original names (e.g. "B.site")
+#' @param conditional Logical if true match the names to the conditional (specific) estimates for the random effects. If false match the names with the mean summary effects.
 #' @param form Formula object used for fitting the random effects indicated in family (e.g. formulae$site.form)
 #' @param name Optional character string to rename the coefficient name column
 #' @details
 #' var: blah, blah, blah
 #' value: something, something
 #' @export
-nameCoefs <- function (coef.summary, rand.levels, family, form = NULL, name = NULL) {
-  if(class(form) == "formula") {
+nameCoefs <- function (coef.summary, rand.levels, family, conditional = TRUE, form = NULL, name = NULL) {
+    if(conditional) {
+      if(class(form) == "formula") {
     B.mean <- dplyr::filter(coef.summary, grepl(paste0('^',family), coef.summary$Parameter))
     
     B.mean$index <- as.numeric(sub(".*?([0-9]+),([0-9]).", replacement = "\\1", B.mean$Parameter))
@@ -102,5 +104,25 @@ nameCoefs <- function (coef.summary, rand.levels, family, form = NULL, name = NU
     B.mean <- dplyr::left_join(B.mean, df, by = "index")
   }
   
+    } else {
+      B.mean <- dplyr::filter(coef.summary, grepl(paste0('^',family), coef.summary$Parameter))
+      
+      B.mean$index <- as.numeric(sub(".*?([0-9]+).", replacement = "\\1", B.mean$Parameter))
+      
+      df.coef <- data.frame(coef = c("(Intercept)", attr(terms.formula(form), "term.labels")), index2 = 1:(length(attr(terms.formula(form), "term.labels")) + 1))
+      if(class(name) == "character") {
+        names(df.coef) <- c(name, "index")
+      } else {
+        names(df.coef) <- c(family, "index")
+      }
+      
+      # recombine to link year and index number of the year
+      B.mean <- dplyr::left_join(B.mean, df.coef, by = "index")
+    }
   return(B.mean)
 }
+
+
+
+
+
