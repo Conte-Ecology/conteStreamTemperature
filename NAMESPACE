@@ -2,7 +2,8 @@
 
 export(assignCatchments)
 export(avgCoefs)
-export(createDeployRows)
+export(createEvalRows)
+export(createFirstRows)
 export(findNearestDaymetPoint)
 export(indexCovariateData)
 export(indexDaymetTileByLatLon)

@@ -578,7 +578,7 @@ if(runParallel) {
 #' }
 #' @export
 
-modelRegionalTempWB <- function(data = tempDataSyncS, data.fixed, data.random.years, param.list, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3, coda = FALSE, runParallel = TRUE) {
+modelRegionalTempWB <- function(data = tempDataSyncS, firstObsRows, evalRows, data.fixed, data.random.years, param.list, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3, coda = FALSE, runParallel = TRUE) {
   #  temp.model <- function(){
 {
   sink("code/modelRegionalTempWB.txt")
@@ -678,10 +678,10 @@ data.list <- list(n = n,
                   dOYInt = data$dOYInt,
                   nSite = length(unique(data$site)),
                   nRiver = length(unique(data$riverOrdered)),
-                  evalRows = evalRows$rowNum,
-                  firstObsRows = firstObsRows$rowNum,
-                  nEvalRows = length(evalRows$rowNum),
-                  nFirstObsRows = length(firstObsRows$rowNum)
+                  evalRows = evalRows,
+                  firstObsRows = firstObsRows,
+                  nEvalRows = length(evalRows),
+                  nFirstObsRows = length(firstObsRows)
                   )
 
 inits <- function(){

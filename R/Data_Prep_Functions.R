@@ -46,7 +46,7 @@ indexDeployments <- function(data, regional = FALSE) {
 #' var: blah, blah, blah
 #' value: something, something
 #' @export
-createDeployRows <- function(data) {
+createFirstRows <- function(data) {
   data$rowNum <- 1:dim(data)[1]
   
   firstObsRows <- data %>%
@@ -54,15 +54,28 @@ createDeployRows <- function(data) {
     filter(date == min(date) | is.na(date)) %>%
     select(rowNum)
   
+  return( firstObsRows$rowNum ) # this can be a list or 1 dataframe with different columns. can't be df - diff # of rows
+}
+
+#' @title createEvalRows: Create rows to loop through for autoregressive function
+#'
+#' @description
+#' \code{createDeployRows} returns a list of two dataframes each with a rowNum column for looping
+#'
+#' @param data Dataframe for analysis with date and a deployID row (can generate with indexDeployments function)
+#' @details
+#' var: blah, blah, blah
+#' value: something, something
+#' @export
+createEvalRows <- function(data) {
+  data$rowNum <- 1:dim(data)[1]
   evalRows <- data %>%
     group_by(deployID) %>%
     filter(date != min(date) & !is.na(date)) %>%
     select(rowNum)
   
-  return(list(firstObsRows, evalRows)) # this can be a list or 1 dataframe with different columns. can't be df - diff # of rows
+  return( evalRows$rowNum ) # this can be a list or 1 dataframe with different columns. can't be df - diff # of rows
 }
-
-
 
 
 # this could go in another file. Ben stuck it here for now
