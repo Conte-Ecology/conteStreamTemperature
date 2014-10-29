@@ -11,6 +11,8 @@
 #' @export
 indexDeployments <- function(data, regional = FALSE) {
   tbl_df(data)
+  data$sitef <- as.factor(data$site)
+  
   if(regional) {
   data <- arrange(data, HUC8, site, date)
   } else {
@@ -21,10 +23,11 @@ indexDeployments <- function(data, regional = FALSE) {
 #  data1=data.frame(site=rep(1:4,each=4),date=rep(1:4))
 #  data=rbind(data1,data1[15:16,])
   
-    data%>%
-      mutate( siteShift = c( 1,site[ 1:(nrow(data)-1) ] ),
+  data <- 
+  data %>%
+      mutate( siteShift = c( 1,sitef[ 1:(nrow(data)-1) ] ),
               dateShift = c( 1,date[ 1:(nrow(data)-1) ] ),
-              newSite = site == siteShift + 1,
+              newSite = sitef == siteShift + 1,
               newDate = date != dateShift + 1,
               newDeploy = (newSite | newDate) * 1,              
               deployID= cumsum(newDeploy) )
@@ -56,7 +59,7 @@ createDeployRows <- function(data) {
     filter(date != min(date) & !is.na(date)) %>%
     select(rowNum)
   
-  return(list(firstObsRows, evalRows)) # this can be a list or 1 dataframe with different columns
+  return(list(firstObsRows, evalRows)) # this can be a list or 1 dataframe with different columns. can't be df - diff # of rows
 }
 
 
