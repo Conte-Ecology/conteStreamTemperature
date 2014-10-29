@@ -79,4 +79,15 @@ createEvalRows <- function(data) {
 
 
 # this could go in another file. Ben stuck it here for now
+
+#' @title not in: 
+#'
+#' @description
+#' \code{!in} anti %in%
+#'
+#' @param x,table
+#' @details
+#' var: blah, blah, blah
+#' value: something, something
+#' @export
 "%!in%" <- function(x,table) match(x,table, nomatch = 0) == 0
