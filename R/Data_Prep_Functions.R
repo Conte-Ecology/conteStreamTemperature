@@ -11,7 +11,8 @@
 #' @export
 indexDeployments <- function(data, regional = FALSE) {
   tbl_df(data)
-  data$sitef <- as.factor(data$site)
+  data$sitef <- as.numeric(as.factor(data$site))
+  data$rowNum <- 1:nrow(data)
   
   if(regional) {
   data <- arrange(data, HUC8, site, date)
@@ -71,7 +72,7 @@ createEvalRows <- function(data) {
   data$rowNum <- 1:dim(data)[1]
   evalRows <- data %>%
     group_by(deployID) %>%
-    filter(date != min(date) & !is.na(date)) %>%
+    filter(date != min(date) & !is.na(temp)) %>%
     select(rowNum)
   
   return( evalRows$rowNum ) # this can be a list or 1 dataframe with different columns. can't be df - diff # of rows
