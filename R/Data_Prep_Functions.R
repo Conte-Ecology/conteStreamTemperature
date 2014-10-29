@@ -26,9 +26,8 @@ indexDeployments <- function(data, regional = FALSE) {
               dateShift = c( 1,date[ 1:(nrow(data)-1) ] ),
               newSite = site == siteShift + 1,
               newDate = date != dateShift + 1,
-              newDeploy = (newSite | newDate) * 1
-              ) %>%
-      mutate( deployID= cumsum(newDeploy) )
+              newDeploy = (newSite | newDate) * 1,              
+              deployID= cumsum(newDeploy) )
   
   return(data)
 }
