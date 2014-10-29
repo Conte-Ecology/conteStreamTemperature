@@ -3,19 +3,13 @@
 \alias{modelRegionalTempAR1}
 \title{modelRegionalTempAR1}
 \usage{
-modelRegionalTempAR1(data = tempDataSyncS, data.fixed, data.random.sites,
-  data.random.years, firstObsRows = firstObsRows, evalRows = evalRows,
-  param.list, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3,
-  coda = FALSE, runParallel = TRUE)
+modelRegionalTempAR1(data = tempDataSyncS, formulae = formulae,
+  firstObsRows = firstObsRows, evalRows = evalRows, param.list,
+  n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3, coda = FALSE,
+  runParallel = TRUE)
 }
 \arguments{
 \item{data}{dataframe created in the 3-statModelPrep.Rmd script}
-
-\item{data.fixed}{Dataframe of fixed effects parameter names from columns in data. These are parameters without random slopes.}
-
-\item{data.random.sites}{Dataframe of variables to have random slopes by site}
-
-\item{data.random.years}{Dataframe of variables to have random slopes by year}
 
 \item{n.burn}{Integer number of iterations in the burn-in (adapation) phase of the MCMC}
 
@@ -24,6 +18,12 @@ modelRegionalTempAR1(data = tempDataSyncS, data.fixed, data.random.sites,
 \item{n.thin}{Integer: save every nth iteration}
 
 \item{coda}{Logical if TRUE return coda mcmc.list, if FALSE (default) return jags.samples object}
+
+\item{data.fixed}{Dataframe of fixed effects parameter names from columns in data. These are parameters without random slopes.}
+
+\item{data.random.sites}{Dataframe of variables to have random slopes by site}
+
+\item{data.random.years}{Dataframe of variables to have random slopes by year}
 
 \item{deployments}{Named vector of the logger deployment starting positions (rows) within the dataframe.}
 

@@ -56,6 +56,6 @@ createDeployRows <- function(data) {
     filter(date != min(date) & !is.na(date)) %>%
     select(rowNum)
   
-  return(list(firstObsRows, evalRows)) # this can be a list or 1 dataframe with different columns
+  return(list(firstObsRows = firstObsRows, evalRows = evalRows)) # this can be a list or 1 dataframe with different columns
 }
 
