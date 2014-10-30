@@ -6,7 +6,9 @@
 x \%!in\% table
 }
 \arguments{
-\item{x,table}{}
+\item{x}{}
+
+\item{table}{}
 }
 \description{
 \code{!in} antii %in%
