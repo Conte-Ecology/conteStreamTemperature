@@ -48,7 +48,7 @@ indexDeployments <- function(data, regional = FALSE) {
 #' value: something, something
 #' @export
 createFirstRows <- function(data) {
-  data$rowNum <- 1:dim(data)[1]
+  #data$rowNum <- 1:dim(data)[1] This is created in indexDeployments
   
   firstObsRows <- data %>%
     group_by(deployID) %>%
@@ -69,7 +69,7 @@ createFirstRows <- function(data) {
 #' value: something, something
 #' @export
 createEvalRows <- function(data) {
-  data$rowNum <- 1:dim(data)[1]
+  #data$rowNum <- 1:dim(data)[1]
   evalRows <- data %>%
     group_by(deployID) %>%
     filter(date != min(date) & !is.na(temp)) %>%
@@ -78,6 +78,47 @@ createEvalRows <- function(data) {
   return( evalRows$rowNum ) # this can be a list or 1 dataframe with different columns. can't be df - diff # of rows
 }
 
+
+
+#' @title addStreamMuResid 
+#'
+#' @description
+#' \code{addStreamMuResid} get means for stream.mu and resid from the jags output. append means to tempDataSyncS
+#'
+#' @param M,tempDataSyncS
+#' @details
+#' var: blah, blah, blah
+#' value: something, something
+#' @export
+addStreamMuResid <- function(M.wb,tempDataSyncS){
+    
+  getMeansStreamMuResid <- 
+    M.wb %>%
+    as.matrix(.) %>%
+    melt(.) %>%
+    group_by(Var2) %>%
+    summarise( mean = mean(value) ) %>%
+    mutate( rowNum = as.numeric( substring(Var2,regexpr("\\[",Var2)+1,regexpr("\\]",Var2)-1) ) ) %>%
+    filter( row_number() %in% grep("stream.mu",x=Var2) | 
+              row_number() %in% grep("residuals",x=Var2)) 
+  
+  m1 <- getMeansStreamMuResid %>%
+    filter(row_number() %in% grep("residuals",x=Var2) ) %>%
+    mutate( resid.wb = mean ) 
+  
+  tempDataSyncS$resid.wb <- NULL
+  tempDataSyncS <- left_join( tempDataSyncS,m1[,c('rowNum','resid.wb')], by = 'rowNum')
+  
+  m2 <- getMeansStreamMuResid %>%
+    filter(row_number() %in% grep("stream.mu",x=Var2) ) %>%
+    mutate( pred.wb = mean ) 
+  
+  tempDataSyncS$pred.wb <- NULL
+  tempDataSyncS <- left_join( tempDataSyncS,m2[,c('rowNum','pred.wb')], by = 'rowNum')
+  
+  return( tempDataSyncS )
+  
+}
 
 # this could go in another file. Ben stuck it here for now
 
