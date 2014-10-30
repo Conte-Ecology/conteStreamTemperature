@@ -172,9 +172,8 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
     tempDataSyncValidS <- stdCovs(x = tempDataSyncValid, y = tempDataSync, var.names = var.names)
     
     tempDataSyncValidS <- indexDeployments(tempDataSyncValidS, regional = TRUE)
-    rows.valid <- createDeployRows(tempDataSyncValidS)
-    firstObsRowsValid <- rows.valid$firstObsRows
-    evalRowsValid <- rows.valid$evalRows
+    firstObsRowsValid <- createFirstRows(tempDataSyncValidS)
+    evalRowsValid <-createEvalRows(tempDataSyncValidS)
     
   } else {
     tempDataSyncValid <- NULL
@@ -188,9 +187,8 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
   
   # Data for fitting
   tempDataSyncS <- indexDeployments(tempDataSyncS, regional = TRUE)
-  rows <- createDeployRows(tempDataSyncS)
-  firstObsRows <- rows$firstObsRows
-  evalRows <- rows$evalRows
+  firstObsRows <- createFirstRows(tempDataSyncS)
+  evalRows <-createEvalRows(tempDataSyncS)
   
   if(validate) {
     save(tempDataSync, tempDataSyncS, tempDataSyncValid, tempDataSyncValidS, firstObsRows, evalRows, firstObsRowsValid, evalRowsValid, file = paste0(dataOutDir, 'tempDataSync.RData'))
