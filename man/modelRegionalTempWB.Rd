@@ -3,9 +3,9 @@
 \alias{modelRegionalTempWB}
 \title{modelRegionalTempWB}
 \usage{
-modelRegionalTempWB(data = tempDataSyncS, data.fixed, data.random.years,
-  param.list, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3,
-  coda = FALSE, runParallel = TRUE)
+modelRegionalTempWB(data = tempDataSyncS, firstObsRows, evalRows, data.fixed,
+  data.random.years, param.list, n.burn = 5000, n.it = 3000, n.thin = 3,
+  nc = 3, coda = FALSE, runParallel = TRUE)
 }
 \arguments{
 \item{data}{dataframe created in the 3-statModelPrep.Rmd script}

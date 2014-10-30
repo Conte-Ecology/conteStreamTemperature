@@ -11,6 +11,9 @@
 #' @export
 indexDeployments <- function(data, regional = FALSE) {
   tbl_df(data)
+  data$sitef <- as.numeric(as.factor(data$site))
+  data$rowNum <- 1:nrow(data)
+  
   if(regional) {
   data <- arrange(data, HUC8, site, date)
   } else {
@@ -21,10 +24,11 @@ indexDeployments <- function(data, regional = FALSE) {
 #  data1=data.frame(site=rep(1:4,each=4),date=rep(1:4))
 #  data=rbind(data1,data1[15:16,])
   
-    data %>%
-      mutate( siteShift = c( 1,site[ 1:(nrow(data)-1) ] ),
+  data <- 
+  data %>%
+      mutate( siteShift = c( 1,sitef[ 1:(nrow(data)-1) ] ),
               dateShift = c( 1,date[ 1:(nrow(data)-1) ] ),
-              newSite = site == siteShift + 1,
+              newSite = sitef == siteShift + 1,
               newDate = date != dateShift + 1,
               newDeploy = (newSite | newDate) * 1,              
               deployID= cumsum(newDeploy) )
@@ -43,7 +47,7 @@ indexDeployments <- function(data, regional = FALSE) {
 #' var: blah, blah, blah
 #' value: something, something
 #' @export
-createDeployRows <- function(data) {
+createFirstRows <- function(data) {
   data$rowNum <- 1:dim(data)[1]
   
   firstObsRows <- data %>%
@@ -51,22 +55,42 @@ createDeployRows <- function(data) {
     filter(date == min(date) | is.na(date)) %>%
     select(rowNum)
   
+  return( firstObsRows$rowNum ) # this can be a list or 1 dataframe with different columns. can't be df - diff # of rows
+}
+
+#' @title createEvalRows: Create rows to loop through for autoregressive function
+#'
+#' @description
+#' \code{createDeployRows} returns a list of two dataframes each with a rowNum column for looping
+#'
+#' @param data Dataframe for analysis with date and a deployID row (can generate with indexDeployments function)
+#' @details
+#' var: blah, blah, blah
+#' value: something, something
+#' @export
+createEvalRows <- function(data) {
+  data$rowNum <- 1:dim(data)[1]
   evalRows <- data %>%
     group_by(deployID) %>%
-    filter(date != min(date) & !is.na(date)) %>%
+    filter(date != min(date) & !is.na(temp)) %>%
     select(rowNum)
   
-  return(list(firstObsRows = firstObsRows, evalRows = evalRows)) # this can be a list or 1 dataframe with different columns
+  return( evalRows$rowNum ) # this can be a list or 1 dataframe with different columns. can't be df - diff # of rows
 }
 
 
-
-
-# this could go in another file. Ben stuck it here for now
+#' @title not in: 
+#'
+#' @description
+#' \code{!in} antii %in%
+#'
+#' @param x
+#' @param table
+#' @details
+#' var: blah, blah, blah
+#' value: something, something
+#' @export
 "%!in%" <- function(x, table) match(x, table, nomatch = 0) == 0
-
-
-
 
 
 #' @title prepDataWrapper: Wrapper to prepare data for analysis or predictions
@@ -74,12 +98,12 @@ createDeployRows <- function(data) {
 #' @description
 #' \code{prepDataWrapper} Wrapper to prepare data for analysis or predictions
 #'
-#' @param 
+#' @param var.names Character vector naming the variables to standardize for analysis
 #' @details
 #' var: blah, blah, blah
 #' value: something, something
 #' @export
-prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, predict.daymet = FALSE, validate = FALSE, validateFrac = NULL, ...) {
+prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, predict.daymet = FALSE, validate = FALSE, validateFrac = NULL, filter.area = NULL) {
   
   tempData <- readStreamTempData(timeSeries=TRUE, covariates=TRUE, dataSourceList=dataSource, fieldListTS=fields, fieldListCD='ALL', directory=dataInDir)
   
@@ -132,7 +156,7 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
   # Make dataframe with just variables for modeling and order before standardizing
   tempDataSync <- tempDataSync[ , c("agency", "date", "AgencyID", "year", "site", "date", "finalSpringBP", "finalFallBP", "FEATUREID", "HUC4", "HUC8", "HUC12", "temp", "Latitude", "Longitude", "airTemp", "airTempLagged1", "airTempLagged2", "prcp", "prcpLagged1", "prcpLagged2", "prcpLagged3", "dOY", "Forest", "Herbacious", "Agriculture", "Developed", "TotDASqKM", "ReachElevationM", "ImpoundmentsAllSqKM", "HydrologicGroupAB", "SurficialCoarseC", "CONUSWetland", "ReachSlopePCNT", "srad", "dayl", "swe")] #  
   
-  tempDataSync <- filter(tempDataSync, filter = TotDASqKM <= filter.area)
+  if(class(filter.area) == "numeric") tempDataSync <- filter(tempDataSync, filter = TotDASqKM <= filter.area)
   
   ### Separate data for fitting (training) and validation
   
