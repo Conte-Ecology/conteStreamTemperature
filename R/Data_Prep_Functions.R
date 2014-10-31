@@ -48,11 +48,11 @@ indexDeployments <- function(data, regional = FALSE) {
 #' value: something, something
 #' @export
 createFirstRows <- function(data) {
-  data$rowNum <- 1:dim(data)[1]
+  #data$rowNum <- 1:dim(data)[1] This is created in indexDeployments
   
   firstObsRows <- data %>%
     group_by(deployID) %>%
-    filter(date == min(date) | is.na(date)) %>%
+    filter(date == min(date) | is.na(temp)) %>%
     select(rowNum)
   
   return( firstObsRows$rowNum ) # this can be a list or 1 dataframe with different columns. can't be df - diff # of rows
@@ -69,7 +69,7 @@ createFirstRows <- function(data) {
 #' value: something, something
 #' @export
 createEvalRows <- function(data) {
-  data$rowNum <- 1:dim(data)[1]
+  #data$rowNum <- 1:dim(data)[1]
   evalRows <- data %>%
     group_by(deployID) %>%
     filter(date != min(date) & !is.na(temp)) %>%
@@ -78,6 +78,45 @@ createEvalRows <- function(data) {
   return( evalRows$rowNum ) # this can be a list or 1 dataframe with different columns. can't be df - diff # of rows
 }
 
+#' @title addStreamMuResid 
+#'
+#' @description
+#' \code{addStreamMuResid} get means for stream.mu and resid from the jags output. append means to tempDataSyncS
+#'
+#' @param M,tempDataSyncS
+#' @details
+#' var: blah, blah, blah
+#' value: something, something
+#' @export
+addStreamMuResid <- function(M.wb,tempDataSyncS){
+    
+  getMeansStreamMuResid <- 
+    M.wb %>%
+    as.matrix(.) %>%
+    melt(.) %>%
+    group_by(Var2) %>%
+    summarise( mean = mean(value) ) %>%
+    mutate( rowNum = as.numeric( substring(Var2,regexpr("\\[",Var2)+1,regexpr("\\]",Var2)-1) ) ) %>%
+    filter( row_number() %in% grep("stream.mu",x=Var2) | 
+              row_number() %in% grep("residuals",x=Var2)) 
+  
+  m1 <- getMeansStreamMuResid %>%
+    filter(row_number() %in% grep("residuals",x=Var2) ) %>%
+    mutate( resid.wb = mean ) 
+  
+  tempDataSyncS$resid.wb <- NULL
+  tempDataSyncS <- left_join( tempDataSyncS,m1[,c('rowNum','resid.wb')], by = 'rowNum')
+  
+  m2 <- getMeansStreamMuResid %>%
+    filter(row_number() %in% grep("stream.mu",x=Var2) ) %>%
+    mutate( pred.wb = mean ) 
+  
+  tempDataSyncS$pred.wb <- NULL
+  tempDataSyncS <- left_join( tempDataSyncS,m2[,c('rowNum','pred.wb')], by = 'rowNum')
+  
+  return( tempDataSyncS )
+  
+}
 
 #' @title not in: 
 #'
@@ -106,7 +145,7 @@ createEvalRows <- function(data) {
 #' @export
 prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, predict.daymet = FALSE, validate = FALSE, validateFrac = NULL, filter.area = NULL, file) {
   
-
+  
   if(predict.daymet) {
     
     covariateData <- readStreamTempData(timeSeries=FALSE, covariates=TRUE, dataSourceList=dataSource, fieldListTS=fields, fieldListCD='ALL', directory=dataInDir)
@@ -114,24 +153,24 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
     springFallBPs$site <- as.character(springFallBPs$site)
     ########## How to add BP for years without data and clip data to the sync period ??? #######
     # Join with break points
-   # covariateDataBP <- left_join(covariateData, springFallBPs, by=c('site', 'year'))
+    # covariateDataBP <- left_join(covariateData, springFallBPs, by=c('site', 'year'))
     # rm(covariateData)
     
     # temp hack
     climateData$site <- as.character(climateData$site)
     tempData <- left_join(climateData, select(covariateData, -Latitude, -Longitude), by=c('site'))
-   tempDataBP <- left_join(tempData, springFallBPs, by=c('site', 'year'))
+    tempDataBP <- left_join(tempData, springFallBPs, by=c('site', 'year'))
     
     # Clip to syncronized season
     # tempFullSync <- filter(tempDataBP, dOY >= finalSpringBP & dOY <= finalFallBP)
     
     # temp hack - eventually need to adjust Kyle's code to substitute huc or other mean breakpoint in when NA
     tempDataSync <- tempDataBP %>%
-     filter(dOY >= finalSpringBP & dOY <= finalFallBP | is.na(finalSpringBP) | is.na(finalFallBP)) %>%
-     filter(dOY >= mean(finalSpringBP, na.rm = T) & dOY <= mean(finalFallBP, na.rm = T))
-   
-   rm(climateData) # save some memory
-   ##################
+      filter(dOY >= finalSpringBP & dOY <= finalFallBP | is.na(finalSpringBP) | is.na(finalFallBP)) %>%
+      filter(dOY >= mean(finalSpringBP, na.rm = T) & dOY <= mean(finalFallBP, na.rm = T))
+    
+    rm(climateData) # save some memory
+    ##################
   } else {
     
     
@@ -166,11 +205,11 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
   tempDataSync <- slide(tempDataSync, Var = "prcp", GroupVar = "site", slideBy = -3, NewVar='prcpLagged3')
   
   # Make dataframe with just variables for modeling and order before standardizing
- if(predict.daymet) {
-   tempDataSync <- tempDataSync[ , c("date", "year", "site", "date", "finalSpringBP", "finalFallBP", "FEATUREID", "HUC4", "HUC8", "HUC12", "maxAirTemp", "minAirTemp", "Latitude", "Longitude", "airTemp", "airTempLagged1", "airTempLagged2", "prcp", "prcpLagged1", "prcpLagged2", "prcpLagged3", "dOY", "Forest", "Herbacious", "Agriculture", "Developed", "TotDASqKM", "ReachElevationM", "ImpoundmentsAllSqKM", "HydrologicGroupAB", "SurficialCoarseC", "CONUSWetland", "ReachSlopePCNT", "srad", "dayl", "swe")] #
- } else {
+  if(predict.daymet) {
+    tempDataSync <- tempDataSync[ , c("date", "year", "site", "date", "finalSpringBP", "finalFallBP", "FEATUREID", "HUC4", "HUC8", "HUC12", "maxAirTemp", "minAirTemp", "Latitude", "Longitude", "airTemp", "airTempLagged1", "airTempLagged2", "prcp", "prcpLagged1", "prcpLagged2", "prcpLagged3", "dOY", "Forest", "Herbacious", "Agriculture", "Developed", "TotDASqKM", "ReachElevationM", "ImpoundmentsAllSqKM", "HydrologicGroupAB", "SurficialCoarseC", "CONUSWetland", "ReachSlopePCNT", "srad", "dayl", "swe")] #
+  } else {
     tempDataSync <- tempDataSync[ , c("agency", "date", "AgencyID", "year", "site", "date", "finalSpringBP", "finalFallBP", "FEATUREID", "HUC4", "HUC8", "HUC12", "temp", "Latitude", "Longitude", "airTemp", "airTempLagged1", "airTempLagged2", "prcp", "prcpLagged1", "prcpLagged2", "prcpLagged3", "dOY", "Forest", "Herbacious", "Agriculture", "Developed", "TotDASqKM", "ReachElevationM", "ImpoundmentsAllSqKM", "HydrologicGroupAB", "SurficialCoarseC", "CONUSWetland", "ReachSlopePCNT", "srad", "dayl", "swe")] #  
- }
+  }
   
   if(class(filter.area) == "numeric") tempDataSync <- filter(tempDataSync, filter = TotDASqKM <= filter.area)
   
@@ -201,18 +240,19 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
   
   ### Add unique deployment column and create vector to loop through for each unique site-deployment
   
- # Data for fitting
- if(!predict.daymet) {
-   tempDataSyncS <- indexDeployments(tempDataSyncS, regional = TRUE)
- firstObsRows <- createFirstRows(tempDataSyncS)
- evalRows <- createEvalRows(tempDataSyncS)
-  
-  if(validate) {
-    save(tempDataSync, tempDataSyncS, tempDataSyncValid, tempDataSyncValidS, firstObsRows, evalRows, firstObsRowsValid, evalRowsValid, file = file)
+  # Data for fitting
+  if(!predict.daymet) {
+    tempDataSyncS <- indexDeployments(tempDataSyncS, regional = TRUE)
+    firstObsRows <- createFirstRows(tempDataSyncS)
+    evalRows <- createEvalRows(tempDataSyncS)
+    
+    if(validate) {
+      save(tempDataSync, tempDataSyncS, tempDataSyncValid, tempDataSyncValidS, firstObsRows, evalRows, firstObsRowsValid, evalRowsValid, file = file)
+    } else {
+      save(tempDataSync, tempDataSyncS, firstObsRows, evalRows, file = file)
+    }
   } else {
-    save(tempDataSync, tempDataSyncS, firstObsRows, evalRows, file = file)
+    save(tempDataSync, tempDataSyncS, file = file)
   }
- } else {
-save(tempDataSync, tempDataSyncS, file = file)
-   }
 }
+
