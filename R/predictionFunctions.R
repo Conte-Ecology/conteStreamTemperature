@@ -21,7 +21,7 @@
 #' Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, firstObsRows = firstObsRows, evalRows = evalRows, B.fixed = B.fixed, B.site = B.site, B.huc = B.huc, B.year = B.year, B.ar1 = B.ar1))
 #' }
 #' @export
-predictTemp <- function(data, data.fit = tempDataSyncS, firstObsRows = firstObsRows, evalRows = evalRows, B.fixed = B.fixed, B.site = B.site, B.huc = B.huc, B.year = B.year, B.ar1 = B.ar1) {
+predictTemp <- function(data, data.fit = tempDataSyncS, firstObsRows = firstObsRows, evalRows = evalRows, B.fixed = B.fixed, B.site = B.site, B.huc = B.huc, B.year = B.year, B.ar1 = B.ar1, observed = TRUE) {
   
   df <- prepDF(data)
   
@@ -60,34 +60,47 @@ predictTemp <- function(data, data.fit = tempDataSyncS, firstObsRows = firstObsR
   }
   
   Pred <- NA
-  trend <- NA
   
-  for(i in 1:length(firstObsRows$rowNum)) {
-    trend[firstObsRows$rowNum[i]] <- as.numeric(
-      B.fixed$mean %*% t(df$data.fixed[firstObsRows$rowNum[i], ]) + 
-        dplyr::filter(B.huc, huc == as.character(data$HUC8[firstObsRows$rowNum[i]]))$mean %*% t(df$data.random.sites[firstObsRows$rowNum[i], ]) + 
-        dplyr::filter(B.site, site == as.character(data$site[firstObsRows$rowNum[i]]))$mean %*% t(df$data.random.sites[firstObsRows$rowNum[i], ]) + 
-        dplyr::filter(B.year, year == as.character(data$year[firstObsRows$rowNum[i]]))$mean %*% t(df$data.random.years[firstObsRows$rowNum[i], ])
+  if(observed) {
+    trend <- NA
+  for(i in 1:length(firstObsRows)) {
+    trend[firstObsRows[i]] <- as.numeric(
+      B.fixed$mean %*% t(df$data.fixed[firstObsRows[i], ]) + 
+        dplyr::filter(B.huc, huc == as.character(data$HUC8[firstObsRows[i]]))$mean %*% t(df$data.random.sites[firstObsRows[i], ]) + 
+        dplyr::filter(B.site, site == as.character(data$site[firstObsRows[i]]))$mean %*% t(df$data.random.sites[firstObsRows[i], ]) + 
+        dplyr::filter(B.year, year == as.character(data$year[firstObsRows[i]]))$mean %*% t(df$data.random.years[firstObsRows[i], ])
     )
     
-    Pred[firstObsRows$rowNum[i]] <- trend[firstObsRows$rowNum[i]]
+    Pred[firstObsRows[i]] <- trend[firstObsRows[i]]
   }
   
-  for(i in 1:length(evalRows$rowNum)) {
-    trend[evalRows$rowNum[i]] <- as.numeric(
-      B.fixed$mean %*% t(df$data.fixed[evalRows$rowNum[i], ]) + 
-        dplyr::filter(B.huc, huc == as.character(data$HUC8[evalRows$rowNum[i]]))$mean %*% t(df$data.random.sites[evalRows$rowNum[i], ]) + 
-        dplyr::filter(B.site, site == as.character(data$site[evalRows$rowNum[i]]))$mean %*% t(df$data.random.sites[evalRows$rowNum[i], ]) + 
-        dplyr::filter(B.year, year == as.character(data$year[evalRows$rowNum[i]]))$mean %*% t(df$data.random.years[evalRows$rowNum[i], ]) 
+  for(i in 1:length(evalRows)) {
+    trend[evalRows[i]] <- as.numeric(
+      B.fixed$mean %*% t(df$data.fixed[evalRows[i], ]) + 
+        dplyr::filter(B.huc, huc == as.character(data$HUC8[evalRows[i]]))$mean %*% t(df$data.random.sites[evalRows[i], ]) + 
+        dplyr::filter(B.site, site == as.character(data$site[evalRows[i]]))$mean %*% t(df$data.random.sites[evalRows[i], ]) + 
+        dplyr::filter(B.year, year == as.character(data$year[evalRows[i]]))$mean %*% t(df$data.random.years[evalRows[i], ]) 
     )
     
-    if(is.na(data$temp[evalRows$rowNum[i]-1]) | is.null(data$temp[evalRows$rowNum[i]-1])) {
-      Pred[evalRows$rowNum[i]] <- trend[evalRows$rowNum[i]]
+    if(is.na(data$temp[evalRows[i]-1]) | is.null(data$temp[evalRows[i]-1])) {
+      Pred[evalRows[i]] <- trend[evalRows[i]]
     } else {
-      Pred[evalRows$rowNum[i]] <- trend[evalRows$rowNum[i]] + 
-        dplyr::filter(B.ar1, site == as.character(data$site[evalRows$rowNum[i]]))$mean * (data$temp[evalRows$rowNum[i]-1] - trend[evalRows$rowNum[i]-1])
+      Pred[evalRows[i]] <- trend[evalRows[i]] + 
+        dplyr::filter(B.ar1, site == as.character(data$site[evalRows[i]]))$mean * (data$temp[evalRows[i]-1] - trend[evalRows[i]-1])
     }
-    #as.numeric(B.ar1$mean * (data$temp[evalRows$rowNum[i]-1] - trend[evalRows$rowNum[i]-1]))
+    #as.numeric(B.ar1$mean * (data$temp[evalRows[i]-1] - trend[evalRows[i]-1]))
+  }
+  
+  } else {
+    for(i in 1:dim(data)[1]) {
+      Pred[i] <- as.numeric(
+        B.fixed$mean %*% t(df$data.fixed[i, ]) + 
+          dplyr::filter(B.huc, huc == as.character(data$HUC8[i]))$mean %*% t(df$data.random.sites[i, ]) + 
+          dplyr::filter(B.site, site == as.character(data$site[i]))$mean %*% t(df$data.random.sites[i, ]) + 
+          dplyr::filter(B.year, year == as.character(data$year[i]))$mean %*% t(df$data.random.years[i, ])
+      )
+      
+    }
   }
   
   return(Pred)

@@ -5,10 +5,12 @@
 \usage{
 prepDataWrapper(data.fit = NULL, var.names, dataInDir, dataOutDir,
   predict.daymet = FALSE, validate = FALSE, validateFrac = NULL,
-  filter.area = NULL)
+  filter.area = NULL, file)
 }
 \arguments{
 \item{var.names}{Character vector naming the variables to standardize for analysis}
+
+\item{File}{directory and name for output objects}
 }
 \description{
 \code{prepDataWrapper} Wrapper to prepare data for analysis or predictions

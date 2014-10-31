@@ -5,7 +5,7 @@
 \usage{
 predictTemp(data, data.fit = tempDataSyncS, firstObsRows = firstObsRows,
   evalRows = evalRows, B.fixed = B.fixed, B.site = B.site,
-  B.huc = B.huc, B.year = B.year, B.ar1 = B.ar1)
+  B.huc = B.huc, B.year = B.year, B.ar1 = B.ar1, observed = TRUE)
 }
 \arguments{
 \item{data}{Data frame of covariates for prediction}

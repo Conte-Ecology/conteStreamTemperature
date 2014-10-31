@@ -99,42 +99,54 @@ createEvalRows <- function(data) {
 #' \code{prepDataWrapper} Wrapper to prepare data for analysis or predictions
 #'
 #' @param var.names Character vector naming the variables to standardize for analysis
+#' @param File directory and name for output objects
 #' @details
 #' var: blah, blah, blah
 #' value: something, something
 #' @export
-prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, predict.daymet = FALSE, validate = FALSE, validateFrac = NULL, filter.area = NULL) {
+prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, predict.daymet = FALSE, validate = FALSE, validateFrac = NULL, filter.area = NULL, file) {
   
-  tempData <- readStreamTempData(timeSeries=TRUE, covariates=TRUE, dataSourceList=dataSource, fieldListTS=fields, fieldListCD='ALL', directory=dataInDir)
-  
-  springFallBPs$site <- as.character(springFallBPs$site)
-  
+
   if(predict.daymet) {
+    
+    covariateData <- readStreamTempData(timeSeries=FALSE, covariates=TRUE, dataSourceList=dataSource, fieldListTS=fields, fieldListCD='ALL', directory=dataInDir)
+    
+    springFallBPs$site <- as.character(springFallBPs$site)
     ########## How to add BP for years without data and clip data to the sync period ??? #######
     # Join with break points
-    covariateDataBP <- left_join(covariateData, springFallBPs, by=c('site', 'year'))
+   # covariateDataBP <- left_join(covariateData, springFallBPs, by=c('site', 'year'))
     # rm(covariateData)
     
     # temp hack
     climateData$site <- as.character(climateData$site)
-    tempDataBP <- left_join(climateData, covariateDataBP, by=c('site'))
+    tempData <- left_join(climateData, select(covariateData, -Latitude, -Longitude), by=c('site'))
+   tempDataBP <- left_join(tempData, springFallBPs, by=c('site', 'year'))
     
     # Clip to syncronized season
     # tempFullSync <- filter(tempDataBP, dOY >= finalSpringBP & dOY <= finalFallBP)
     
-    # temp hack
-    tempDataSync <- filter(tempDataBP, dOY >= 50 & dOY <= 350)
-    tempDataSync$Latitude <- tempDataSync$Latitude.x
-    tempDataSync$Longitude <- tempDataSync$Longitude.x
-    ##################
+    # temp hack - eventually need to adjust Kyle's code to substitute huc or other mean breakpoint in when NA
+    tempDataSync <- tempDataBP %>%
+     filter(dOY >= finalSpringBP & dOY <= finalFallBP | is.na(finalSpringBP) | is.na(finalFallBP)) %>%
+     filter(dOY >= mean(finalSpringBP, na.rm = T) & dOY <= mean(finalFallBP, na.rm = T))
+   
+   rm(climateData) # save some memory
+   ##################
   } else {
+    
+    
+    covariateData <- readStreamTempData(timeSeries=TRUE, covariates=TRUE, dataSourceList=dataSource, fieldListTS=fields, fieldListCD='ALL', directory=dataInDir)
+    
+    springFallBPs$site <- as.character(springFallBPs$site)
+    
     # Join with break points
-    tempDataBP <- left_join(tempData, springFallBPs, by=c('site', 'year'))
-    rm(tempData) # save some memory
+    tempDataBP <- left_join(covariateData, springFallBPs, by=c('site', 'year'))
     
     # Clip to syncronized season
     tempDataSync <- filter(tempDataBP, dOY >= finalSpringBP & dOY <= finalFallBP)
   }
+  
+  rm(covariateData) # save some memory
   
   # Order by group and date
   tempDataSync <- tempDataSync[order(tempDataSync$site,tempDataSync$year,tempDataSync$dOY),]
@@ -154,7 +166,11 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
   tempDataSync <- slide(tempDataSync, Var = "prcp", GroupVar = "site", slideBy = -3, NewVar='prcpLagged3')
   
   # Make dataframe with just variables for modeling and order before standardizing
-  tempDataSync <- tempDataSync[ , c("agency", "date", "AgencyID", "year", "site", "date", "finalSpringBP", "finalFallBP", "FEATUREID", "HUC4", "HUC8", "HUC12", "temp", "Latitude", "Longitude", "airTemp", "airTempLagged1", "airTempLagged2", "prcp", "prcpLagged1", "prcpLagged2", "prcpLagged3", "dOY", "Forest", "Herbacious", "Agriculture", "Developed", "TotDASqKM", "ReachElevationM", "ImpoundmentsAllSqKM", "HydrologicGroupAB", "SurficialCoarseC", "CONUSWetland", "ReachSlopePCNT", "srad", "dayl", "swe")] #  
+ if(predict.daymet) {
+   tempDataSync <- tempDataSync[ , c("date", "year", "site", "date", "finalSpringBP", "finalFallBP", "FEATUREID", "HUC4", "HUC8", "HUC12", "maxAirTemp", "minAirTemp", "Latitude", "Longitude", "airTemp", "airTempLagged1", "airTempLagged2", "prcp", "prcpLagged1", "prcpLagged2", "prcpLagged3", "dOY", "Forest", "Herbacious", "Agriculture", "Developed", "TotDASqKM", "ReachElevationM", "ImpoundmentsAllSqKM", "HydrologicGroupAB", "SurficialCoarseC", "CONUSWetland", "ReachSlopePCNT", "srad", "dayl", "swe")] #
+ } else {
+    tempDataSync <- tempDataSync[ , c("agency", "date", "AgencyID", "year", "site", "date", "finalSpringBP", "finalFallBP", "FEATUREID", "HUC4", "HUC8", "HUC12", "temp", "Latitude", "Longitude", "airTemp", "airTempLagged1", "airTempLagged2", "prcp", "prcpLagged1", "prcpLagged2", "prcpLagged3", "dOY", "Forest", "Herbacious", "Agriculture", "Developed", "TotDASqKM", "ReachElevationM", "ImpoundmentsAllSqKM", "HydrologicGroupAB", "SurficialCoarseC", "CONUSWetland", "ReachSlopePCNT", "srad", "dayl", "swe")] #  
+ }
   
   if(class(filter.area) == "numeric") tempDataSync <- filter(tempDataSync, filter = TotDASqKM <= filter.area)
   
@@ -185,14 +201,18 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
   
   ### Add unique deployment column and create vector to loop through for each unique site-deployment
   
-  # Data for fitting
-  tempDataSyncS <- indexDeployments(tempDataSyncS, regional = TRUE)
-  firstObsRows <- createFirstRows(tempDataSyncS)
-  evalRows <-createEvalRows(tempDataSyncS)
+ # Data for fitting
+ if(!predict.daymet) {
+   tempDataSyncS <- indexDeployments(tempDataSyncS, regional = TRUE)
+ firstObsRows <- createFirstRows(tempDataSyncS)
+ evalRows <- createEvalRows(tempDataSyncS)
   
   if(validate) {
-    save(tempDataSync, tempDataSyncS, tempDataSyncValid, tempDataSyncValidS, firstObsRows, evalRows, firstObsRowsValid, evalRowsValid, file = paste0(dataOutDir, 'tempDataSync.RData'))
+    save(tempDataSync, tempDataSyncS, tempDataSyncValid, tempDataSyncValidS, firstObsRows, evalRows, firstObsRowsValid, evalRowsValid, file = file)
   } else {
-    save(tempDataSync, tempDataSyncS, firstObsRows, evalRows, file = paste0(dataOutDir, 'tempDataSync.RData'))
+    save(tempDataSync, tempDataSyncS, firstObsRows, evalRows, file = file)
   }
+ } else {
+save(tempDataSync, tempDataSyncS, file = file)
+   }
 }
