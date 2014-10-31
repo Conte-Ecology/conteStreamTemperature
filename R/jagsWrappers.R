@@ -25,7 +25,7 @@
 #' M.ar <- modelRegionalTempAR(data, data.fixed, data.random.sites, data.random.years, n.burn = 1000, n.it = 1000, n.thin = 1, nc = 3, coda = coda.tf, param.list = monitor.params)
 #' }
 #' @export
-modelRegionalTempAR1 <- function(data = tempDataSyncS, formulae = formulae, firstObsRows = firstObsRows, evalRows = evalRows, param.list, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3, coda = FALSE, runParallel = TRUE) {
+modelRegionalTempAR1 <- function(data = tempDataSyncS, formulae, firstObsRows, evalRows, param.list, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3, coda = FALSE, runParallel = TRUE) {
   #  temp.model <- function(){
 {
   sink("code/modelRegionalTempAR1.txt")
@@ -134,7 +134,7 @@ modelRegionalTempAR1 <- function(data = tempDataSyncS, formulae = formulae, firs
 # Fixed effects
 #library(dplyr)
 
-data.cal <- prepDF(data, formulae = formulae)
+data.cal <- prepDF(data, form = formulae)
 
 X.0 <- data.cal$data.fixed
 variables.fixed <- names(X.0)
@@ -166,16 +166,16 @@ data.list <- list(n = n,
                   L = L,
                   M = M,
                   K.0 = K.0,
-                  X.0 = X.0,
+                  X.0 = as.matrix(X.0), # X.0
                   W.site = W.site,
                   W.year = W.year,
                   W.huc = W.huc,
                   temp = data$temp,
-                  evalRows = evalRows$rowNum,
-                  nEvalRows = length(evalRows$rowNum),
-                  firstObsRows = firstObsRows$rowNum,
-                  nFirstObsRows = length(firstObsRows$rowNum),
-                  X.site = X.site, #as.matrix(X.site),
+                  evalRows = evalRows,
+                  nEvalRows = length(evalRows),
+                  firstObsRows = firstObsRows,
+                  nFirstObsRows = length(firstObsRows),
+                  X.site = as.matrix(X.site), # X.site, #
                   X.year = as.matrix(X.year),
                   site = as.factor(data$site),
                   huc = as.factor(data$HUC8),

@@ -256,3 +256,80 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
   }
 }
 
+
+
+#' @title prepDF: Prepares dataframe for use or prediction
+#'
+#' @description
+#' \code{prepDF} Prepares dataframe for use or prediction
+#'
+#' @param data Dataframe of potential covariates to model or predict daily stream temperature
+#' @param form Named list of formulae each created with the formula function. Names must be data.fixed, data.random.sites, and data.random.years.
+#' @return List of named data frames each created using model.matrix and the input formulae
+#' @details
+#' blah, blah, blah
+#' @examples
+#' 
+#' \dontrun{
+#' data.list <- prepDF(data = df, form = formulae)
+#' }
+#' @export
+prepDF <- function(data, form) {
+  ## Change to use model matrix for simplicity and consistency?
+  #data.fixed <- data.frame(intercept = 1,
+  #                   lat = data$Latitude,
+  #                  lon = data$Longitude,
+  #                 drainage = data$TotDASqKM,
+  #                forest = data$Forest,
+  #               elevation = data$ReachElevationM,
+  #              coarseness = data$SurficialCoarseC,
+  #             wetland = data$CONUSWetland,
+  #            impoundments = data$ImpoundmentsAllSqKM,
+  #           airT.drainage = data$airTemp * data$TotDASqKM)
+  
+  #data.fixed <- data %>%
+  # mutate(intercept = 1, 
+  #       airT.drainage = airTemp * TotDASqKM) %>%
+  #select(intercept,
+  #      Latitude,
+  #     Longitude,
+  #    TotDASqKM,
+  #   Forest,
+  #  ReachElevationM,
+  # SurficialCoarseC,
+  # CONUSWetland,
+  # ImpoundmentsAllSqKM,
+  # airT.drainage)
+  
+  # Benefit of using model matrix?
+  
+  data.fixed <- model.matrix(form$fixed.form, data)
+  # str(data.fixed)
+  # head(data.fixed)
+  colnames(data.fixed)
+  
+  
+  data.random.sites <- model.matrix(form$site.form, data)
+  
+  #data.random.sites <- data.frame(intercept.site = 1, 
+  #                    airTemp = data$airTemp, 
+  #airTempLag1 = data$airTempLagged1,
+  #                   airTempLag2 = data$airTempLagged2,
+  #                  precip = data$prcp,
+  #                 precipLag1 = data$prcpLagged1,
+  #precipLag2 = data$prcpLagged2,
+  # effect of interaction with random and fixed effects?
+  #                airT.precip = data$airTemp * data$prcp) # airT.precip2 = data$airTemp * data$prcpLagged1 - doesn't converge
+  
+  
+  data.random.years <- model.matrix(form$year.form, data)
+  
+  #data.random.years <- data.frame(intercept.year = 1, 
+  #                    dOY = data$dOY, 
+  #                    dOY2 = data$dOY^2,
+  #                   dOY3 = data$dOY^3)
+  
+  return(list(data.fixed = as.data.frame(data.fixed), data.random.sites = as.data.frame(data.random.sites), data.random.years = as.data.frame(data.random.years)))
+}
+
+
