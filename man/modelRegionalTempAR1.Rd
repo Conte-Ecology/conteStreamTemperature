@@ -3,9 +3,9 @@
 \alias{modelRegionalTempAR1}
 \title{modelRegionalTempAR1}
 \usage{
-modelRegionalTempAR1(data = tempDataSyncS, formulae, firstObsRows, evalRows,
-  param.list, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3,
-  coda = FALSE, runParallel = TRUE)
+modelRegionalTempAR1(data = tempDataSyncS, cov.list, formulae = NULL,
+  firstObsRows, evalRows, param.list, n.burn = 5000, n.it = 3000,
+  n.thin = 3, nc = 3, coda = FALSE, runParallel = TRUE)
 }
 \arguments{
 \item{data}{dataframe created in the 3-statModelPrep.Rmd script}

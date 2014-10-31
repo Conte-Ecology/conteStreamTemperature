@@ -213,6 +213,8 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
   
   if(class(filter.area) == "numeric") tempDataSync <- filter(tempDataSync, filter = TotDASqKM <= filter.area)
   
+  tempDataSync <- na.omit(tempDataSync) ####### Needed to take out first few days that get NA in the lagged terms. Change this so don't take out NA in stream temperature?
+  
   ### Separate data for fitting (training) and validation
   
   #If validating:
@@ -238,15 +240,17 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
   
   tempDataSyncS <- stdFitCovs(x = tempDataSync, var.names = var.names)
   
-  ### Add unique deployment column and create vector to loop through for each unique site-deployment
+  tempDataSyncS <- addInteractions(tempDataSyncS)
   
-  # Data for fitting
   if(!predict.daymet) {
     tempDataSyncS <- indexDeployments(tempDataSyncS, regional = TRUE)
     firstObsRows <- createFirstRows(tempDataSyncS)
     evalRows <- createEvalRows(tempDataSyncS)
     
     if(validate) {
+      
+      tempDataSyncValidS <- addInteractions(tempDataSyncValidS)
+      
       save(tempDataSync, tempDataSyncS, tempDataSyncValid, tempDataSyncValidS, firstObsRows, evalRows, firstObsRowsValid, evalRowsValid, file = file)
     } else {
       save(tempDataSync, tempDataSyncS, firstObsRows, evalRows, file = file)
@@ -257,6 +261,33 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
 }
 
 
+#' @title addInteractions: Add intercepts, interaction, and polynomial terms to dataframe
+#'
+#' @description
+#' \code{addInteractions} Add intercepts, interaction, and polynomial terms to dataframe
+#'
+#' @param data Dataframe of covariates to model or predict daily stream temperature
+#' @return Original dataframe plus the additional terms
+#' @details
+#' By making this a function it can easily get added to multiple places in the data prep for validation, fitting, or predicting. Then there is only one place where the interactions have to be specified
+#' @examples
+#' 
+#' \dontrun{
+#' tempDataSyncS <- addInteractions(tempDataSyncS)
+#' }
+#' @export
+addInteractions <- function(data) {
+  data <- data %>%
+    dplyr::mutate(intercept = 1 
+                  , airTemp.TotDASqKM = airTemp * TotDASqKM
+                  , intercept.site = 1
+                  , airTemp.prcp = airTemp * prcp
+                  , intercept.year = 1
+                  , dOY2 = dOY ^ 2
+                  , dOY3 = dOY ^ 3
+    )
+  return(data)
+}
 
 #' @title prepDF: Prepares dataframe for use or prediction
 #'
@@ -271,65 +302,22 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
 #' @examples
 #' 
 #' \dontrun{
-#' data.list <- prepDF(data = df, form = formulae)
+#' data.list <- prepDF(data = tempDataSyncS, cov.list = cov.list)
 #' }
 #' @export
-prepDF <- function(data, form) {
-  ## Change to use model matrix for simplicity and consistency?
-  #data.fixed <- data.frame(intercept = 1,
-  #                   lat = data$Latitude,
-  #                  lon = data$Longitude,
-  #                 drainage = data$TotDASqKM,
-  #                forest = data$Forest,
-  #               elevation = data$ReachElevationM,
-  #              coarseness = data$SurficialCoarseC,
-  #             wetland = data$CONUSWetland,
-  #            impoundments = data$ImpoundmentsAllSqKM,
-  #           airT.drainage = data$airTemp * data$TotDASqKM)
+prepDF <- function(data, cov.list) {
+  data.fixed <- data %>%
+    select(one_of(cov.list$fixed.ef))
   
-  #data.fixed <- data %>%
-  # mutate(intercept = 1, 
-  #       airT.drainage = airTemp * TotDASqKM) %>%
-  #select(intercept,
-  #      Latitude,
-  #     Longitude,
-  #    TotDASqKM,
-  #   Forest,
-  #  ReachElevationM,
-  # SurficialCoarseC,
-  # CONUSWetland,
-  # ImpoundmentsAllSqKM,
-  # airT.drainage)
+  data.random.sites <- data %>%
+    select(one_of(cov.list$site.ef))
   
-  # Benefit of using model matrix?
+  data.random.years <- data %>%
+    select(one_of(cov.list$year.ef))
   
-  data.fixed <- model.matrix(form$fixed.form, data)
-  # str(data.fixed)
-  # head(data.fixed)
-  colnames(data.fixed)
+  data.cal <- list(data.fixed = data.fixed, data.random.sites = data.random.sites, data.random.years = data.random.years)
   
-  
-  data.random.sites <- model.matrix(form$site.form, data)
-  
-  #data.random.sites <- data.frame(intercept.site = 1, 
-  #                    airTemp = data$airTemp, 
-  #airTempLag1 = data$airTempLagged1,
-  #                   airTempLag2 = data$airTempLagged2,
-  #                  precip = data$prcp,
-  #                 precipLag1 = data$prcpLagged1,
-  #precipLag2 = data$prcpLagged2,
-  # effect of interaction with random and fixed effects?
-  #                airT.precip = data$airTemp * data$prcp) # airT.precip2 = data$airTemp * data$prcpLagged1 - doesn't converge
-  
-  
-  data.random.years <- model.matrix(form$year.form, data)
-  
-  #data.random.years <- data.frame(intercept.year = 1, 
-  #                    dOY = data$dOY, 
-  #                    dOY2 = data$dOY^2,
-  #                   dOY3 = data$dOY^3)
-  
-  return(list(data.fixed = as.data.frame(data.fixed), data.random.sites = as.data.frame(data.random.sites), data.random.years = as.data.frame(data.random.years)))
+  return(data.cal)
 }
 
 

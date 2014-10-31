@@ -3,7 +3,7 @@
 \alias{prepDF}
 \title{prepDF: Prepares dataframe for use or prediction}
 \usage{
-prepDF(data, form)
+prepDF(data, cov.list)
 }
 \arguments{
 \item{data}{Dataframe of potential covariates to model or predict daily stream temperature}
@@ -21,7 +21,7 @@ blah, blah, blah
 }
 \examples{
 \dontrun{
-data.list <- prepDF(data = df, form = formulae)
+data.list <- prepDF(data = tempDataSyncS, cov.list = cov.list)
 }
 }
 
