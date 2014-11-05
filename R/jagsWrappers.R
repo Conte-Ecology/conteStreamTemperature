@@ -574,7 +574,7 @@ if(runParallel) {
 #' @examples
 #' 
 #' \dontrun{
-#' M.wb <- modelRegionalTempWB(data=DF, data.fixed = DF.fixed, data.random.years = DF.years, n.burn = 1000, n.it = 1000, n.thin = 1, nc = 3, coda = coda.tf, param.list = monitor.params)
+#' M.wb <- modelRegionalTempWB(data=DF, firstObsRows, evalRows, data.fixed = DF.fixed, data.random.years = DF.years, n.burn = 1000, n.it = 1000, n.thin = 1, nc = 3, coda = coda.tf, param.list = monitor.params)
 #' }
 #' @export
 
