@@ -69,10 +69,11 @@ avgCoefs <- function(ggs.obj, family = NULL) {
 #' @details
 #' var: blah, blah, blah
 #' value: something, something
+#' coefs <- colnames(data.cal$data.random.sites)
 #' @export
-nameCoefs <- function (coef.summary, rand.levels, family, conditional = TRUE, form = NULL, name = NULL) {
+nameCoefs <- function (coef.summary, rand.levels, family, conditional = TRUE, form = NULL, name = NULL, coefs = NULL) {
     if(conditional) {
-      if(class(form) == "formula") {
+      if(class(coefs) == "character") {
     B.mean <- dplyr::filter(coef.summary, grepl(paste0('^',family), coef.summary$Parameter))
     
     B.mean$index <- as.numeric(sub(".*?([0-9]+),([0-9]).", replacement = "\\1", B.mean$Parameter))
@@ -84,7 +85,7 @@ nameCoefs <- function (coef.summary, rand.levels, family, conditional = TRUE, fo
     } else {
       names(df) <- c(family, "index")
     }
-    df.coef <- data.frame(coef = c("(Intercept)", attr(terms.formula(form), "term.labels")), index2 = 1:(length(attr(terms.formula(form), "term.labels")) + 1))
+    df.coef <- data.frame(coef = coefs, index2 = 1:length(coefs))
     
     B.mean <- dplyr::left_join(B.mean, df, by = "index")
     B.mean <- dplyr::left_join(B.mean, df.coef, by = "index2")
@@ -109,7 +110,7 @@ nameCoefs <- function (coef.summary, rand.levels, family, conditional = TRUE, fo
       
       B.mean$index <- as.numeric(sub(".*?([0-9]+).", replacement = "\\1", B.mean$Parameter))
       
-      df.coef <- data.frame(coef = c("(Intercept)", attr(terms.formula(form), "term.labels")), index2 = 1:(length(attr(terms.formula(form), "term.labels")) + 1))
+      df.coef <- data.frame(coef = coefs, index2 = 1:length(coefs))
       if(class(name) == "character") {
         names(df.coef) <- c(name, "index")
       } else {

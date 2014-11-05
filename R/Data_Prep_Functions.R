@@ -78,9 +78,6 @@ createEvalRows <- function(data) {
   return( evalRows$rowNum ) # this can be a list or 1 dataframe with different columns. can't be df - diff # of rows
 }
 
-
-<<<<<<< HEAD
-
 #' @title addStreamMuResid 
 #'
 #' @description
@@ -121,10 +118,6 @@ addStreamMuResid <- function(M.wb,tempDataSyncS){
   
 }
 
-# this could go in another file. Ben stuck it here for now
-
-=======
->>>>>>> ac1a77f649195ffd71340685725ea4db7ce2d384
 #' @title not in: 
 #'
 #' @description
@@ -145,42 +138,54 @@ addStreamMuResid <- function(M.wb,tempDataSyncS){
 #' \code{prepDataWrapper} Wrapper to prepare data for analysis or predictions
 #'
 #' @param var.names Character vector naming the variables to standardize for analysis
+#' @param File directory and name for output objects
 #' @details
 #' var: blah, blah, blah
 #' value: something, something
 #' @export
-prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, predict.daymet = FALSE, validate = FALSE, validateFrac = NULL, filter.area = NULL) {
+prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, predict.daymet = FALSE, validate = FALSE, validateFrac = NULL, filter.area = NULL, file) {
   
-  tempData <- readStreamTempData(timeSeries=TRUE, covariates=TRUE, dataSourceList=dataSource, fieldListTS=fields, fieldListCD='ALL', directory=dataInDir)
-  
-  springFallBPs$site <- as.character(springFallBPs$site)
   
   if(predict.daymet) {
+    
+    covariateData <- readStreamTempData(timeSeries=FALSE, covariates=TRUE, dataSourceList=dataSource, fieldListTS=fields, fieldListCD='ALL', directory=dataInDir)
+    
+    springFallBPs$site <- as.character(springFallBPs$site)
     ########## How to add BP for years without data and clip data to the sync period ??? #######
     # Join with break points
-    covariateDataBP <- left_join(covariateData, springFallBPs, by=c('site', 'year'))
+    # covariateDataBP <- left_join(covariateData, springFallBPs, by=c('site', 'year'))
     # rm(covariateData)
     
     # temp hack
     climateData$site <- as.character(climateData$site)
-    tempDataBP <- left_join(climateData, covariateDataBP, by=c('site'))
+    tempData <- left_join(climateData, select(covariateData, -Latitude, -Longitude), by=c('site'))
+    tempDataBP <- left_join(tempData, springFallBPs, by=c('site', 'year'))
     
     # Clip to syncronized season
     # tempFullSync <- filter(tempDataBP, dOY >= finalSpringBP & dOY <= finalFallBP)
     
-    # temp hack
-    tempDataSync <- filter(tempDataBP, dOY >= 50 & dOY <= 350)
-    tempDataSync$Latitude <- tempDataSync$Latitude.x
-    tempDataSync$Longitude <- tempDataSync$Longitude.x
+    # temp hack - eventually need to adjust Kyle's code to substitute huc or other mean breakpoint in when NA
+    tempDataSync <- tempDataBP %>%
+      filter(dOY >= finalSpringBP & dOY <= finalFallBP | is.na(finalSpringBP) | is.na(finalFallBP)) %>%
+      filter(dOY >= mean(finalSpringBP, na.rm = T) & dOY <= mean(finalFallBP, na.rm = T))
+    
+    rm(climateData) # save some memory
     ##################
   } else {
+    
+    
+    covariateData <- readStreamTempData(timeSeries=TRUE, covariates=TRUE, dataSourceList=dataSource, fieldListTS=fields, fieldListCD='ALL', directory=dataInDir)
+    
+    springFallBPs$site <- as.character(springFallBPs$site)
+    
     # Join with break points
-    tempDataBP <- left_join(tempData, springFallBPs, by=c('site', 'year'))
-    rm(tempData) # save some memory
+    tempDataBP <- left_join(covariateData, springFallBPs, by=c('site', 'year'))
     
     # Clip to syncronized season
     tempDataSync <- filter(tempDataBP, dOY >= finalSpringBP & dOY <= finalFallBP)
   }
+  
+  rm(covariateData) # save some memory
   
   # Order by group and date
   tempDataSync <- tempDataSync[order(tempDataSync$site,tempDataSync$year,tempDataSync$dOY),]
@@ -200,9 +205,15 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
   tempDataSync <- slide(tempDataSync, Var = "prcp", GroupVar = "site", slideBy = -3, NewVar='prcpLagged3')
   
   # Make dataframe with just variables for modeling and order before standardizing
-  tempDataSync <- tempDataSync[ , c("agency", "date", "AgencyID", "year", "site", "date", "finalSpringBP", "finalFallBP", "FEATUREID", "HUC4", "HUC8", "HUC12", "temp", "Latitude", "Longitude", "airTemp", "airTempLagged1", "airTempLagged2", "prcp", "prcpLagged1", "prcpLagged2", "prcpLagged3", "dOY", "Forest", "Herbacious", "Agriculture", "Developed", "TotDASqKM", "ReachElevationM", "ImpoundmentsAllSqKM", "HydrologicGroupAB", "SurficialCoarseC", "CONUSWetland", "ReachSlopePCNT", "srad", "dayl", "swe")] #  
+  if(predict.daymet) {
+    tempDataSync <- tempDataSync[ , c("date", "year", "site", "date", "finalSpringBP", "finalFallBP", "FEATUREID", "HUC4", "HUC8", "HUC12", "maxAirTemp", "minAirTemp", "Latitude", "Longitude", "airTemp", "airTempLagged1", "airTempLagged2", "prcp", "prcpLagged1", "prcpLagged2", "prcpLagged3", "dOY", "Forest", "Herbacious", "Agriculture", "Developed", "TotDASqKM", "ReachElevationM", "ImpoundmentsAllSqKM", "HydrologicGroupAB", "SurficialCoarseC", "CONUSWetland", "ReachSlopePCNT", "srad", "dayl", "swe")] #
+  } else {
+    tempDataSync <- tempDataSync[ , c("agency", "date", "AgencyID", "year", "site", "date", "finalSpringBP", "finalFallBP", "FEATUREID", "HUC4", "HUC8", "HUC12", "temp", "Latitude", "Longitude", "airTemp", "airTempLagged1", "airTempLagged2", "prcp", "prcpLagged1", "prcpLagged2", "prcpLagged3", "dOY", "Forest", "Herbacious", "Agriculture", "Developed", "TotDASqKM", "ReachElevationM", "ImpoundmentsAllSqKM", "HydrologicGroupAB", "SurficialCoarseC", "CONUSWetland", "ReachSlopePCNT", "srad", "dayl", "swe")] #  
+  }
   
   if(class(filter.area) == "numeric") tempDataSync <- filter(tempDataSync, filter = TotDASqKM <= filter.area)
+  
+  tempDataSync <- na.omit(tempDataSync) ####### Needed to take out first few days that get NA in the lagged terms. Change this so don't take out NA in stream temperature?
   
   ### Separate data for fitting (training) and validation
   
@@ -229,16 +240,84 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
   
   tempDataSyncS <- stdFitCovs(x = tempDataSync, var.names = var.names)
   
-  ### Add unique deployment column and create vector to loop through for each unique site-deployment
+  tempDataSyncS <- addInteractions(tempDataSyncS)
   
-  # Data for fitting
-  tempDataSyncS <- indexDeployments(tempDataSyncS, regional = TRUE)
-  firstObsRows <- createFirstRows(tempDataSyncS)
-  evalRows <-createEvalRows(tempDataSyncS)
-  
-  if(validate) {
-    save(tempDataSync, tempDataSyncS, tempDataSyncValid, tempDataSyncValidS, firstObsRows, evalRows, firstObsRowsValid, evalRowsValid, file = paste0(dataOutDir, 'tempDataSync.RData'))
+  if(!predict.daymet) {
+    tempDataSyncS <- indexDeployments(tempDataSyncS, regional = TRUE)
+    firstObsRows <- createFirstRows(tempDataSyncS)
+    evalRows <- createEvalRows(tempDataSyncS)
+    
+    if(validate) {
+      
+      tempDataSyncValidS <- addInteractions(tempDataSyncValidS)
+      
+      save(tempDataSync, tempDataSyncS, tempDataSyncValid, tempDataSyncValidS, firstObsRows, evalRows, firstObsRowsValid, evalRowsValid, file = file)
+    } else {
+      save(tempDataSync, tempDataSyncS, firstObsRows, evalRows, file = file)
+    }
   } else {
-    save(tempDataSync, tempDataSyncS, firstObsRows, evalRows, file = paste0(dataOutDir, 'tempDataSync.RData'))
+    save(tempDataSync, tempDataSyncS, file = file)
   }
 }
+
+
+#' @title addInteractions: Add intercepts, interaction, and polynomial terms to dataframe
+#'
+#' @description
+#' \code{addInteractions} Add intercepts, interaction, and polynomial terms to dataframe
+#'
+#' @param data Dataframe of covariates to model or predict daily stream temperature
+#' @return Original dataframe plus the additional terms
+#' @details
+#' By making this a function it can easily get added to multiple places in the data prep for validation, fitting, or predicting. Then there is only one place where the interactions have to be specified
+#' @examples
+#' 
+#' \dontrun{
+#' tempDataSyncS <- addInteractions(tempDataSyncS)
+#' }
+#' @export
+addInteractions <- function(data) {
+  data <- data %>%
+    dplyr::mutate(intercept = 1 
+                  , airTemp.TotDASqKM = airTemp * TotDASqKM
+                  , intercept.site = 1
+                  , airTemp.prcp = airTemp * prcp
+                  , intercept.year = 1
+                  , dOY2 = dOY ^ 2
+                  , dOY3 = dOY ^ 3
+    )
+  return(data)
+}
+
+#' @title prepDF: Prepares dataframe for use or prediction
+#'
+#' @description
+#' \code{prepDF} Prepares dataframe for use or prediction
+#'
+#' @param data Dataframe of potential covariates to model or predict daily stream temperature
+#' @param form Named list of formulae each created with the formula function. Names must be data.fixed, data.random.sites, and data.random.years.
+#' @return List of named data frames each created using model.matrix and the input formulae
+#' @details
+#' blah, blah, blah
+#' @examples
+#' 
+#' \dontrun{
+#' data.list <- prepDF(data = tempDataSyncS, cov.list = cov.list)
+#' }
+#' @export
+prepDF <- function(data, cov.list) {
+  data.fixed <- data %>%
+    select(one_of(cov.list$fixed.ef))
+  
+  data.random.sites <- data %>%
+    select(one_of(cov.list$site.ef))
+  
+  data.random.years <- data %>%
+    select(one_of(cov.list$year.ef))
+  
+  data.cal <- list(data.fixed = data.fixed, data.random.sites = data.random.sites, data.random.years = data.random.years)
+  
+  return(data.cal)
+}
+
+
