@@ -21,9 +21,15 @@
 #' Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, firstObsRows = firstObsRows, evalRows = evalRows, B.fixed = B.fixed, B.site = B.site, B.huc = B.huc, B.year = B.year, B.ar1 = B.ar1))
 #' }
 #' @export
-predictTemp <- function(data, data.fit = tempDataSyncS, firstObsRows = firstObsRows, evalRows = evalRows, B.fixed = B.fixed, B.site = B.site, B.huc = B.huc, B.year = B.year, B.ar1 = B.ar1, observed = TRUE) {
+predictTemp <- function(data, data.fit = tempDataSyncS, coefs, firstObsRows, evalRows, observed = TRUE) {
   
-  df <- prepDF(data)
+  B.fixed = coef.list$B.fixed
+  B.site = coef.list$B.site
+  B.huc = coef.list$B.huc
+  B.year = coef.list$B.year
+  B.ar1 = coef.list$B.ar1
+  
+  df <- prepDF(data, covars = cov.list)
   
   if(!(identical(data, data.fit))) {
     site.new <- data %>%
