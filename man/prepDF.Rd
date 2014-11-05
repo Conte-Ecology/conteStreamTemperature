@@ -3,7 +3,7 @@
 \alias{prepDF}
 \title{prepDF: Prepares dataframe for use or prediction}
 \usage{
-prepDF(data, cov.list)
+prepDF(data, covars)
 }
 \arguments{
 \item{data}{Dataframe of potential covariates to model or predict daily stream temperature}

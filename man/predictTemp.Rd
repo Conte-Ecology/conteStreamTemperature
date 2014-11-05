@@ -3,9 +3,8 @@
 \alias{predictTemp}
 \title{predictTemp: Predict conditional daily temperatures for observed or unobserved sites}
 \usage{
-predictTemp(data, data.fit = tempDataSyncS, firstObsRows = firstObsRows,
-  evalRows = evalRows, B.fixed = B.fixed, B.site = B.site,
-  B.huc = B.huc, B.year = B.year, B.ar1 = B.ar1, observed = TRUE)
+predictTemp(data, data.fit = tempDataSyncS, coefs, firstObsRows, evalRows,
+  observed = TRUE)
 }
 \arguments{
 \item{data}{Data frame of covariates for prediction}
