@@ -98,7 +98,7 @@ addStreamMuResid <- function(M.wb,tempDataSyncS){
     summarise( mean = mean(value) ) %>%
     mutate( rowNum = as.numeric( substring(Var2,regexpr("\\[",Var2)+1,regexpr("\\]",Var2)-1) ) ) %>%
     filter( row_number() %in% grep("stream.mu",x=Var2) | 
-              row_number() %in% grep("residuals",x=Var2)) 
+            row_number() %in% grep("residuals",x=Var2)) 
   
   m1 <- getMeansStreamMuResid %>%
     filter(row_number() %in% grep("residuals",x=Var2) ) %>%
