@@ -185,7 +185,7 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
     tempDataBP <- left_join(covariateData, springFallBPs, by=c('site', 'year'))
     
     # Clip to syncronized season
-    tempDataSync <- filter(tempDataBP, dOY >= finalSpringBP & dOY <= finalFallBP)
+    tempDataSync <- dplyr::filter(tempDataBP, dOY >= finalSpringBP & dOY <= finalFallBP)
   }
   
   rm(covariateData) # save some memory
@@ -308,15 +308,18 @@ addInteractions <- function(data) {
 #' data.list <- prepDF(data = tempDataSyncS, cov.list = cov.list)
 #' }
 #' @export
-prepDF <- function(data, cov.list) {
+prepDF <- function(data, covars) {
+
+  data <- addInteractions(data = data)
+  
   data.fixed <- data %>%
-    select(one_of(cov.list$fixed.ef))
+    select(one_of(covars$fixed.ef))
   
   data.random.sites <- data %>%
-    select(one_of(cov.list$site.ef))
+    select(one_of(covars$site.ef))
   
   data.random.years <- data %>%
-    select(one_of(cov.list$year.ef))
+    select(one_of(covars$year.ef))
   
   data.cal <- list(data.fixed = data.fixed, data.random.sites = data.random.sites, data.random.years = data.random.years)
   
