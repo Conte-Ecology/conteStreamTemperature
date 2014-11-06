@@ -12,14 +12,14 @@
 indexDeployments <- function(data, regional = FALSE) {
   tbl_df(data)
   data$sitef <- as.numeric(as.factor(data$site))
-  data$rowNum <- 1:nrow(data)
-  
+    
   if(regional) {
   data <- arrange(data, HUC8, site, date)
   } else {
     data <- arrange(data, site, date)
   }
-
+  data$rowNum <- 1:nrow(data)
+  
 #  test  
 #  data1=data.frame(site=rep(1:4,each=4),date=rep(1:4))
 #  data=rbind(data1,data1[15:16,])
@@ -30,7 +30,9 @@ indexDeployments <- function(data, regional = FALSE) {
               dateShift = c( 1,date[ 1:(nrow(data)-1) ] ),
               newSite = sitef == siteShift + 1,
               newDate = date != dateShift + 1,
-              newDeploy = (newSite | newDate) * 1,              
+              isNA = is.na(temp),
+              isNAShift = c(FALSE,isNA[ 1:(nrow(data)-1) ]),
+              newDeploy = (newSite | newDate | isNAShift) * 1,              
               deployID= cumsum(newDeploy) )
   
   return(data)
@@ -52,7 +54,7 @@ createFirstRows <- function(data) {
   
   firstObsRows <- data %>%
     group_by(deployID) %>%
-    filter(date == min(date) | is.na(temp)) %>%
+    filter( date == min(date) | is.na(temp) ) %>%
     select(rowNum)
   
   return( firstObsRows$rowNum ) # this can be a list or 1 dataframe with different columns. can't be df - diff # of rows
@@ -73,6 +75,7 @@ createEvalRows <- function(data) {
   evalRows <- data %>%
     group_by(deployID) %>%
     filter(date != min(date) & !is.na(temp)) %>%
+    #filter(date != min(date) | !is.na(temp)) %>%
     select(rowNum)
   
   return( evalRows$rowNum ) # this can be a list or 1 dataframe with different columns. can't be df - diff # of rows
