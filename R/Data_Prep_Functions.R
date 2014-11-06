@@ -150,6 +150,8 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
     
     covariateData <- readStreamTempData(timeSeries=FALSE, covariates=TRUE, dataSourceList=dataSource, fieldListTS=fields, fieldListCD='ALL', directory=dataInDir)
     
+    observedData <- readStreamTempData(timeSeries=TRUE, covariates=FALSE, dataSourceList=dataSource, fieldListTS=fields, fieldListCD='ALL', directory=dataInDir)
+    
     springFallBPs$site <- as.character(springFallBPs$site)
     ########## How to add BP for years without data and clip data to the sync period ??? #######
     # Join with break points
@@ -159,6 +161,7 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
     # temp hack
     climateData$site <- as.character(climateData$site)
     tempData <- left_join(climateData, select(covariateData, -Latitude, -Longitude), by=c('site'))
+    tempData <- left_join(tempData, select(observedData, agency, data, AgencyID, site, temp), by = c("site", "date"))
     tempDataBP <- left_join(tempData, springFallBPs, by=c('site', 'year'))
     
     # Clip to syncronized season
@@ -205,11 +208,11 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
   tempDataSync <- slide(tempDataSync, Var = "prcp", GroupVar = "site", slideBy = -3, NewVar='prcpLagged3')
   
   # Make dataframe with just variables for modeling and order before standardizing
-  if(predict.daymet) {
-    tempDataSync <- tempDataSync[ , c("date", "year", "site", "date", "finalSpringBP", "finalFallBP", "FEATUREID", "HUC4", "HUC8", "HUC12", "maxAirTemp", "minAirTemp", "Latitude", "Longitude", "airTemp", "airTempLagged1", "airTempLagged2", "prcp", "prcpLagged1", "prcpLagged2", "prcpLagged3", "dOY", "Forest", "Herbacious", "Agriculture", "Developed", "TotDASqKM", "ReachElevationM", "ImpoundmentsAllSqKM", "HydrologicGroupAB", "SurficialCoarseC", "CONUSWetland", "ReachSlopePCNT", "srad", "dayl", "swe")] #
-  } else {
+ # if(predict.daymet) {
+  #  tempDataSync <- tempDataSync[ , c("date", "year", "site", "date", "finalSpringBP", "finalFallBP", "FEATUREID", "HUC4", "HUC8", "HUC12", "maxAirTemp", "minAirTemp", "Latitude", "Longitude", "airTemp", "airTempLagged1", "airTempLagged2", "prcp", "prcpLagged1", "prcpLagged2", "prcpLagged3", "dOY", "Forest", "Herbacious", "Agriculture", "Developed", "TotDASqKM", "ReachElevationM", "ImpoundmentsAllSqKM", "HydrologicGroupAB", "SurficialCoarseC", "CONUSWetland", "ReachSlopePCNT", "srad", "dayl", "swe")] #
+ # } else {
     tempDataSync <- tempDataSync[ , c("agency", "date", "AgencyID", "year", "site", "date", "finalSpringBP", "finalFallBP", "FEATUREID", "HUC4", "HUC8", "HUC12", "temp", "Latitude", "Longitude", "airTemp", "airTempLagged1", "airTempLagged2", "prcp", "prcpLagged1", "prcpLagged2", "prcpLagged3", "dOY", "Forest", "Herbacious", "Agriculture", "Developed", "TotDASqKM", "ReachElevationM", "ImpoundmentsAllSqKM", "HydrologicGroupAB", "SurficialCoarseC", "CONUSWetland", "ReachSlopePCNT", "srad", "dayl", "swe")] #  
-  }
+  #}
   
   if(class(filter.area) == "numeric") tempDataSync <- filter(tempDataSync, filter = TotDASqKM <= filter.area)
   
