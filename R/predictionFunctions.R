@@ -145,12 +145,12 @@ plotPredict <- function(observed, predicted, siteList = "ALL", yearList = "ALL",
   }
   
   ###### Need to convert back to original scale or join with original DF
-  predicted.origin.scale <- left_join(observed, predicted[ , c("site", "date", "Pred")], by = c("site", "date"))
+  predicted.origin.scale <- left_join(observed, predicted[ , c("site", "date", "tempPredicted")], by = c("site", "date"))
   
   for(i in 1:length(unique(sites))){
     dataSite <- dplyr::filter(predicted.origin.scale, filter = site == sites[i] & year %in% years)
     #dataSiteObs <- dplyr::filter(observed, filter = site == sites[i] & year %in% years)
-    foo <- ggplot(dataSite, aes(dOY, Pred)) + 
+    foo <- ggplot(dataSite, aes(dOY, tempPredicted)) + 
       coord_cartesian(xlim = c(100, 300), ylim = c(0, 35)) + 
       geom_point(data=dataSite, aes(dOY, temp), colour='blue') +
       geom_point(colour = 'red') + 
