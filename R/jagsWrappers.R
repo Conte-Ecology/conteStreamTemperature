@@ -134,7 +134,7 @@ modelRegionalTempAR1 <- function(data = tempDataSyncS, cov.list, formulae = NULL
 # Fixed effects
 #library(dplyr)
 
-data.cal <- prepDF(data, cov.list = cov.list)
+data.cal <- prepDF(data, covars = cov.list)
 
 X.0 <- data.cal$data.fixed
 variables.fixed <- names(X.0)

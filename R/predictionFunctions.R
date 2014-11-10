@@ -7,18 +7,15 @@
 #' @param data.fit Data frame used for fitting (calibrating) the JAGS model
 #' @param firstObsRows Dataframe with the rowNum column indicating the rows where a logger was first deployed
 #' @param evalRows Dataframe with the rowNum column indicating the rows during a deployment after the first day for use in the autoregressive
-#' @param B.fixed Dataframe of fixed effect coefficients
-#' @param B.site Dataframe of random site coefficients
-#' @param B.huc Dataframe of random huc coefficients
-#' @param B.year Dataframe of random year coeffcients
-#' @param B.ar1 Dataframe of AR1 coeffcients by random site
+#' @param cov.list List of covariates used in the model
+#' @param coef.list List of coefficient values estimated from the model
 #' @return Numeric vector of predicted daily stream temperatures
 #' @details
 #' The predictions are all conditional on site, HUC8, and year when the data is available and predicts the mean values when any component was not used in the fitting (not in the calibration dataset)
 #' @examples
 #' 
 #' \dontrun{
-#' Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, firstObsRows = firstObsRows, evalRows = evalRows, B.fixed = B.fixed, B.site = B.site, B.huc = B.huc, B.year = B.year, B.ar1 = B.ar1))
+#' Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, firstObsRows = firstObsRows, evalRows = evalRows, cov.list = cov.list, coef.list = coef.list))
 #' }
 #' @export
 predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list, firstObsRows, evalRows, observed = TRUE) {
