@@ -40,7 +40,7 @@ predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list, fir
       dplyr::filter(!(HUC8 %in% levels(as.factor(data.fit$HUC8)))) %>%
       dplyr::select(huc = HUC8) 
     B.huc.new <- expand.grid(huc = levels(as.factor(huc.new$huc)), coef = levels(B.huc$coef))
-    mu.huc <- dplyr::filter(coef.summary, grepl('^mu.huc', coef.summary$Parameter))
+    mu.huc <- dplyr::filter(coef.list$fix.ef, grepl('^mu.huc', Parameter))
     mu.huc$coef <- colnames(df$data.random.sites)
     B.huc.new <- dplyr::left_join(mu.huc, B.huc.new, by = "coef")
     B.huc <- rbind(B.huc[ , c("huc", "coef", "mean")], B.huc.new[ , c("huc", "coef", "mean")])
@@ -49,7 +49,7 @@ predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list, fir
       dplyr::filter(!(year %in% levels(as.factor(data.fit$year)))) %>%
       dplyr::select(year = year) 
     B.year.new <- expand.grid(year = levels(as.factor(year.new$year)), coef = levels(B.year$coef))
-    mu.year <- dplyr::filter(coef.summary, grepl('^mu.year', coef.summary$Parameter))
+    mu.year <- dplyr::filter(coef.list$fix.ef, grepl('^mu.year', Parameter))
     mu.year$coef <- colnames(df$data.random.years)
     B.year.new <- dplyr::left_join(mu.year, B.year.new, by = "coef")
     B.year <- rbind(B.year[ , c("year", "coef", "mean")], B.year.new[ , c("year", "coef", "mean")])

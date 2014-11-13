@@ -148,6 +148,7 @@ addStreamMuResid <- function(M.wb,tempDataSyncS){
 #' @export
 prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, predict.daymet = FALSE, validate = FALSE, validateFrac = NULL, filter.area = NULL, file) {
   
+  # need to import climate data
   
   if(predict.daymet) {
     
