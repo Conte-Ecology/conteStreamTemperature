@@ -26,41 +26,16 @@ predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list, fir
   B.year = coef.list$B.year
   B.ar1 = coef.list$B.ar1
   
-  df <- prepDF(data, covars = cov.list)
+  #df <- prepDF(data, covars = cov.list)
+  B.site.wide <- dcast(B.site, site ~ coef, value.var = "mean") # conver long to wide
+  B.site.wide <- select(B.site.wide, one_of(c("site", cov.list$site.ef))) # recorder to match for matrix multiplcation
+  names(B.site.wide) <- c(names(B.site.wide[1]), paste0(names(B.site.wide[-1]), ".B.site")) # rename so can differentiate coeficients from variables
+  df <- left_join(data, B.site.wide, by = "site") # merge so can apply/mutate by rows without a slow for loop
+  df[ , names(B.site.wide[-1])][is.na(df[ , names(B.site.wide[-1])])] <- 0
   
-  if(!(identical(data, data.fit))) {
-    site.new <- data %>%
-      dplyr::filter(!(site %in% levels(as.factor(data.fit$site)))) %>%
-      dplyr::select(site)
-    B.site.new <- expand.grid(site = levels(as.factor(site.new$site)), coef = levels(B.site$coef))
-    B.site.new$mean <- 0
-    B.site <- rbind(B.site[ , c("site", "coef", "mean")], B.site.new[ , c("site", "coef", "mean")])
-    
-    huc.new <- data %>%
-      dplyr::filter(!(HUC8 %in% levels(as.factor(data.fit$HUC8)))) %>%
-      dplyr::select(huc = HUC8) 
-    B.huc.new <- expand.grid(huc = levels(as.factor(huc.new$huc)), coef = levels(B.huc$coef))
-    mu.huc <- dplyr::filter(coef.list$fix.ef, grepl('^mu.huc', Parameter))
-    mu.huc$coef <- colnames(df$data.random.sites)
-    B.huc.new <- dplyr::left_join(mu.huc, B.huc.new, by = "coef")
-    B.huc <- rbind(B.huc[ , c("huc", "coef", "mean")], B.huc.new[ , c("huc", "coef", "mean")])
-    
-    year.new <- data %>%
-      dplyr::filter(!(year %in% levels(as.factor(data.fit$year)))) %>%
-      dplyr::select(year = year) 
-    B.year.new <- expand.grid(year = levels(as.factor(year.new$year)), coef = levels(B.year$coef))
-    mu.year <- dplyr::filter(coef.list$fix.ef, grepl('^mu.year', Parameter))
-    mu.year$coef <- colnames(df$data.random.years)
-    B.year.new <- dplyr::left_join(mu.year, B.year.new, by = "coef")
-    B.year <- rbind(B.year[ , c("year", "coef", "mean")], B.year.new[ , c("year", "coef", "mean")])
-    
-    ar1.new <- data %>%
-      dplyr::filter(!(site %in% levels(as.factor(data.fit$site)))) %>%
-      dplyr::select(site)
-    B.ar1.new <- data.frame(site = levels(as.factor(ar1.new$site)))
-    B.ar1.new$mean <- mean(B.ar1$mean)
-    B.ar1 <- rbind(B.ar1[ , c("site", "mean")], B.ar1.new)
-  }
+  Pred <- mutate(df, pred.test = as.matrix(select(df, one_of(cov.list$site.ef))) %*% as.matrix(t(select(df, one_of(names(B.site.wide[-1]))))))
+  
+  dplyr::filter(B.site, site == as.character(data$site[firstObsRows[i]]))$mean %*% t(df$data.random.sites[firstObsRows[i], ])
   
   Pred <- NA
   
