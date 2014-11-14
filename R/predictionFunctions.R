@@ -18,70 +18,32 @@
 #' Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, firstObsRows = firstObsRows, evalRows = evalRows, cov.list = cov.list, coef.list = coef.list))
 #' }
 #' @export
-predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list, firstObsRows, evalRows, observed = TRUE) {
+predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list, observed = TRUE) {
   
-  B.fixed = coef.list$B.fixed
-  B.site = coef.list$B.site
-  B.huc = coef.list$B.huc
-  B.year = coef.list$B.year
-  B.ar1 = coef.list$B.ar1
+  B.site <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = "site")
+  B.huc <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = "huc")
+  B.year <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = "year")
+  B.ar1 <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = "ar1")
   
-  #df <- prepDF(data, covars = cov.list)
-  B.site.wide <- dcast(B.site, site ~ coef, value.var = "mean") # conver long to wide
-  B.site.wide <- select(B.site.wide, one_of(c("site", cov.list$site.ef))) # recorder to match for matrix multiplcation
-  names(B.site.wide) <- c(names(B.site.wide[1]), paste0(names(B.site.wide[-1]), ".B.site")) # rename so can differentiate coeficients from variables
-  df <- left_join(data, B.site.wide, by = "site") # merge so can apply/mutate by rows without a slow for loop
-  df[ , names(B.site.wide[-1])][is.na(df[ , names(B.site.wide[-1])])] <- 0
+  df <- prepPredictDF(data = data, coef.list = coef.list, cov.list = cov.list, var.name = "site")
+  df <- prepPredictDF(data = df, coef.list = coef.list, cov.list = cov.list, var.name = "huc")
+  df <- prepPredictDF(data = df, coef.list = coef.list, cov.list = cov.list, var.name = "year")
+  df <- prepPredictDF(data = df, coef.list = coef.list, cov.list = cov.list, var.name = "ar1")
   
-  Pred <- mutate(df, pred.test = as.matrix(select(df, one_of(cov.list$site.ef))) %*% as.matrix(t(select(df, one_of(names(B.site.wide[-1]))))))
   
-  dplyr::filter(B.site, site == as.character(data$site[firstObsRows[i]]))$mean %*% t(df$data.random.sites[firstObsRows[i], ])
+  df$trend <- NA
+  df$trend <- as.vector(coef.list$B.fixed$mean %*% t(as.matrix(select(data, one_of(cov.list$fixed.ef))))) +
+    rowSums(as.matrix(select(df, one_of(cov.list$site.ef))) * as.matrix(select(df, one_of(names(B.site[-1]))))) +
+    rowSums(as.matrix(select(df, one_of(cov.list$huc.ef))) * as.matrix(select(df, one_of(names(B.huc[-1]))))) +
+    rowSums(as.matrix(select(df, one_of(cov.list$year.ef))) * as.matrix(select(df, one_of(names(B.year[-1])))))
   
-  Pred <- NA
+  # Add B.ar1 to predictions
+    df <- mutate(df, prev.temp = c(NA, temp[(2:(nrow(data))) -1]))
+    df <- mutate(df, prev.trend = c(NA, trend[(2:nrow(data)) - 1]))
+    df <- mutate(df, prev.err = prev.temp - prev.trend)
+    df <- mutate(df, tempPredicted = trend + B.ar1 * prev.err)
   
-  if(observed) {
-    trend <- NA
-    for(i in 1:length(firstObsRows)) {
-      trend[firstObsRows[i]] <- as.numeric(
-        B.fixed$mean %*% t(df$data.fixed[firstObsRows[i], ]) + 
-          dplyr::filter(B.huc, huc == as.character(data$HUC8[firstObsRows[i]]))$mean %*% t(df$data.random.sites[firstObsRows[i], ]) + 
-          dplyr::filter(B.site, site == as.character(data$site[firstObsRows[i]]))$mean %*% t(df$data.random.sites[firstObsRows[i], ]) + 
-          dplyr::filter(B.year, year == as.character(data$year[firstObsRows[i]]))$mean %*% t(df$data.random.years[firstObsRows[i], ])
-      )
-      
-      Pred[firstObsRows[i]] <- trend[firstObsRows[i]]
-    }
-    
-    for(i in 1:length(evalRows)) {
-      trend[evalRows[i]] <- as.numeric(
-        B.fixed$mean %*% t(df$data.fixed[evalRows[i], ]) + 
-          dplyr::filter(B.huc, huc == as.character(data$HUC8[evalRows[i]]))$mean %*% t(df$data.random.sites[evalRows[i], ]) + 
-          dplyr::filter(B.site, site == as.character(data$site[evalRows[i]]))$mean %*% t(df$data.random.sites[evalRows[i], ]) + 
-          dplyr::filter(B.year, year == as.character(data$year[evalRows[i]]))$mean %*% t(df$data.random.years[evalRows[i], ]) 
-      )
-      
-      if(is.na(data$temp[evalRows[i]-1]) | is.null(data$temp[evalRows[i]-1])) {
-        Pred[evalRows[i]] <- trend[evalRows[i]]
-      } else {
-        Pred[evalRows[i]] <- trend[evalRows[i]] + 
-          dplyr::filter(B.ar1, site == as.character(data$site[evalRows[i]]))$mean * (data$temp[evalRows[i]-1] - trend[evalRows[i]-1])
-      }
-      #as.numeric(B.ar1$mean * (data$temp[evalRows[i]-1] - trend[evalRows[i]-1]))
-    }
-    
-  } else {
-    for(i in 1:dim(data)[1]) {
-      Pred[i] <- as.numeric(
-        B.fixed$mean %*% t(df$data.fixed[i, ]) + 
-          dplyr::filter(B.huc, huc == as.character(data$HUC8[i]))$mean %*% t(df$data.random.sites[i, ]) + 
-          dplyr::filter(B.site, site == as.character(data$site[i]))$mean %*% t(df$data.random.sites[i, ]) + 
-          dplyr::filter(B.year, year == as.character(data$year[i]))$mean %*% t(df$data.random.years[i, ])
-      )
-      
-    }
-  }
-  
-  return(Pred)
+  return(df)
 }
 
 
@@ -203,4 +165,33 @@ predCubic <- function( v ){
    
 } 
 
+
+prepPredictDF <- function(data, coef.list, cov.list, var.name) {
+  B <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = var.name)
+  if(var.name == "ar1") {
+    var.name <- "site"
+    data[ , var.name] <- as.factor(data[ , var.name])
+    B <- select(B, site = site, B.ar1 = mean)
+    df <- left_join(data, B, by = var.name)
+  } else {
+    data[ , var.name] <- as.factor(data[ , var.name])
+    df <- left_join(data, B, by = var.name) # merge so can apply/mutate by rows without a slow for loop
+    df[ , names(B[-1])][is.na(df[ , names(B[-1])])] <- 0 # replace NA with standardized mean (0)
+  }
+  return(df)
+}
+
+
+prepConditionalCoef <- function(coef.list, cov.list, var.name) {
+  if(var.name == "ar1") {
+    B <- coef.list[[paste0("B.", var.name)]]
+  } else {
+    f <- paste0(var.name, " ~ coef")
+    B <- dcast(coef.list[[paste0("B.", var.name)]], formula = as.formula(f), value.var = "mean") # conver long to wide
+    B <- select(B, one_of(cbind(var.name, cov.list[[paste0(var.name, ".ef")]]))) # recorder to match for matrix multiplcation
+    names(B) <- c(names(B[1]), paste0(names(B[-1]), ".B.", var.name)) # rename so can differentiate coeficients from variables
+  }
+  
+  return(B)
+}
 
