@@ -5,8 +5,6 @@
 #'
 #' @param data Data frame of covariates for prediction
 #' @param data.fit Data frame used for fitting (calibrating) the JAGS model
-#' @param firstObsRows Dataframe with the rowNum column indicating the rows where a logger was first deployed
-#' @param evalRows Dataframe with the rowNum column indicating the rows during a deployment after the first day for use in the autoregressive
 #' @param cov.list List of covariates used in the model
 #' @param coef.list List of coefficient values estimated from the model
 #' @return Numeric vector of predicted daily stream temperatures
@@ -15,10 +13,10 @@
 #' @examples
 #' 
 #' \dontrun{
-#' Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, firstObsRows = firstObsRows, evalRows = evalRows, cov.list = cov.list, coef.list = coef.list))
+#' Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, cov.list = cov.list, coef.list = coef.list))
 #' }
 #' @export
-predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list, observed = TRUE) {
+predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list) {
   
   B.site <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = "site")
   B.huc <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = "huc")
@@ -165,7 +163,25 @@ predCubic <- function( v ){
    
 } 
 
-
+#' @title prepPredictDF
+#'
+#' @description
+#' \code{prepPredictDF} Helper function to prepare dataframe for predictions
+#'
+#' @param data Dataframe for which predictions will be calculated
+#' @param cov.list List of covariates used in the model
+#' @param coef.list List of coefficient values estimated from the model
+#' 
+#' @return Returns Dataframe of covariates, coefficients from a fitted model, and observed temperature when available
+#' @details
+#' Used within the predictTemp function
+#'  
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
 prepPredictDF <- function(data, coef.list, cov.list, var.name) {
   B <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = var.name)
   if(var.name == "ar1") {
@@ -181,7 +197,25 @@ prepPredictDF <- function(data, coef.list, cov.list, var.name) {
   return(df)
 }
 
-
+#' @title prepConditionalCoef
+#'
+#' @description
+#' \code{prepConditionalCoef} Helper function to prepare dataframe for predictions
+#'
+#' @param cov.list List of covariates used in the model
+#' @param coef.list List of coefficient values estimated from the model
+#' @param var.name Name of variable for which coefficients need to be organized
+#' 
+#' @return Returns Dataframe of coefficients from a fitted model associated with a variable (var.name)
+#' @details
+#' Used within the prepPredictDF function
+#'  
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
 prepConditionalCoef <- function(coef.list, cov.list, var.name) {
   if(var.name == "ar1") {
     B <- coef.list[[paste0("B.", var.name)]]

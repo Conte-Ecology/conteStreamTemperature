@@ -3,27 +3,16 @@
 \alias{predictTemp}
 \title{predictTemp: Predict conditional daily temperatures for observed or unobserved sites}
 \usage{
-predictTemp(data, data.fit = tempDataSyncS, coef.list, cov.list, firstObsRows,
-  evalRows, observed = TRUE)
+predictTemp(data, data.fit = tempDataSyncS, coef.list, cov.list)
 }
 \arguments{
 \item{data}{Data frame of covariates for prediction}
 
 \item{data.fit}{Data frame used for fitting (calibrating) the JAGS model}
 
-\item{firstObsRows}{Dataframe with the rowNum column indicating the rows where a logger was first deployed}
+\item{coef.list}{List of coefficient values estimated from the model}
 
-\item{evalRows}{Dataframe with the rowNum column indicating the rows during a deployment after the first day for use in the autoregressive}
-
-\item{B.fixed}{Dataframe of fixed effect coefficients}
-
-\item{B.site}{Dataframe of random site coefficients}
-
-\item{B.huc}{Dataframe of random huc coefficients}
-
-\item{B.year}{Dataframe of random year coeffcients}
-
-\item{B.ar1}{Dataframe of AR1 coeffcients by random site}
+\item{cov.list}{List of covariates used in the model}
 }
 \value{
 Numeric vector of predicted daily stream temperatures
@@ -36,7 +25,7 @@ The predictions are all conditional on site, HUC8, and year when the data is ava
 }
 \examples{
 \dontrun{
-Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, firstObsRows = firstObsRows, evalRows = evalRows, B.fixed = B.fixed, B.site = B.site, B.huc = B.huc, B.year = B.year, B.ar1 = B.ar1))
+Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, cov.list = cov.list, coef.list = coef.list))
 }
 }
 
