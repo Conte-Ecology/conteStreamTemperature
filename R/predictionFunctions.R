@@ -187,12 +187,13 @@ prepPredictDF <- function(data, coef.list, cov.list, var.name) {
   if(var.name == "ar1") {
     var.name <- "site"
     data[ , var.name] <- as.factor(data[ , var.name])
-    B <- select(B, site = site, B.ar1 = mean)
+    B <- dplyr::select(B, site = site, B.ar1 = mean)
     df <- left_join(data, B, by = var.name)
+    df[ , names(B[-1])][is.na(df[ , names(B[-1])])] <- colMeans(B[-1]) # replace NA with mean
   } else {
     data[ , var.name] <- as.factor(data[ , var.name])
     df <- left_join(data, B, by = var.name) # merge so can apply/mutate by rows without a slow for loop
-    df[ , names(B[-1])][is.na(df[ , names(B[-1])])] <- 0 # replace NA with standardized mean (0)
+    df[ , names(B[-1])][is.na(df[ , names(B[-1])])] <- colMeans(B[-1]) # replace NA with mean
   }
   return(df)
 }
@@ -222,7 +223,7 @@ prepConditionalCoef <- function(coef.list, cov.list, var.name) {
   } else {
     f <- paste0(var.name, " ~ coef")
     B <- dcast(coef.list[[paste0("B.", var.name)]], formula = as.formula(f), value.var = "mean") # conver long to wide
-    B <- select(B, one_of(cbind(var.name, cov.list[[paste0(var.name, ".ef")]]))) # recorder to match for matrix multiplcation
+    B <- dplyr::select(B, one_of(c(var.name, cov.list[[paste0(var.name, ".ef")]]))) # recorder to match for matrix multiplcation
     names(B) <- c(names(B[1]), paste0(names(B[-1]), ".B.", var.name)) # rename so can differentiate coeficients from variables
   }
   

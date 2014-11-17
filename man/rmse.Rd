@@ -3,7 +3,7 @@
 \alias{rmse}
 \title{rmse: root mean squared error}
 \usage{
-rmse(error)
+rmse(error, na.rm = T)
 }
 \arguments{
 \item{error}{Vector of residual error from a model}

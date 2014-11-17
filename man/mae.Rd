@@ -3,7 +3,7 @@
 \alias{mae}
 \title{mae: mean absolute error}
 \usage{
-mae(error)
+mae(error, na.rm = T)
 }
 \arguments{
 \item{error}{Vector of residual error from a model}

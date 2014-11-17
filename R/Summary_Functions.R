@@ -8,8 +8,8 @@
 #' var: blah, blah, blah
 #' value: something, something
 #' @export
-rmse <- function(error) {
-  sqrt(mean(error^2))
+rmse <- function(error, na.rm = T) {
+  sqrt(mean(error^2, na.rm = T))
 }
 
 
@@ -23,8 +23,8 @@ rmse <- function(error) {
 #' var: blah, blah, blah
 #' value: something, something
 #' @export
-mae <- function(error) {
-  mean(abs(error))
+mae <- function(error, na.rm = T) {
+  mean(abs(error), na.rm = T)
 }
 
 
