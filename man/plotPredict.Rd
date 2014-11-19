@@ -4,7 +4,7 @@
 \title{Plot observed and predicted values of stream temperature}
 \usage{
 plotPredict(observed, predicted, siteList = "ALL", yearList = "ALL",
-  dir = getwd())
+  dir = getwd(), display = FALSE)
 }
 \arguments{
 \item{observed}{Dataframe of observed stream temperatures with at least columns "temp", "sites", and "years"}

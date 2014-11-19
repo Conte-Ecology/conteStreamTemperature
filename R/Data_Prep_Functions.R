@@ -1,3 +1,44 @@
+#' @title addInteractions: Add intercepts, interaction, and polynomial terms to dataframe
+#'
+#' @description
+#' \code{addInteractions} Add intercepts, interaction, and polynomial terms to dataframe
+#'
+#' @param data Dataframe of covariates to model or predict daily stream temperature
+#' @return Original dataframe plus the additional terms
+#' @details
+#' By making this a function it can easily get added to multiple places in the data prep for validation, fitting, or predicting. Then there is only one place where the interactions have to be specified
+#' @examples
+#' 
+#' \dontrun{
+#' tempDataSyncS <- addInteractions(tempDataSyncS)
+#' }
+#' @export
+addInteractions <- function(data) {
+  data <- data %>%
+    dplyr::mutate(intercept = 1 
+                  , airTemp.TotDASqKM = airTemp * TotDASqKM
+                  , intercept.site = 1
+                  , airTemp.prcp = airTemp * prcp
+                  , intercept.year = 1
+                  , dOY2 = dOY ^ 2
+                  , dOY3 = dOY ^ 3
+                  , airTempLagged1.TotDASqKM = airTempLagged1 * TotDASqKM
+                  , airTempLagged2.TotDASqKM = airTempLagged2 * TotDASqKM
+                  , prcp.Forest = prcp * Forest
+                  , airTemp.prcpLagged1 = airTemp * prcpLagged1
+                  , airTemp.prcpLagged2 = airTemp * prcpLagged2
+                  , airTempLagged1.prcpLagged1 = airTempLagged1 * prcpLagged1
+                  , airTempLagged1.prcpLagged2 = airTempLagged1 * prcpLagged2
+                  , airTempLagged2.prcpLagged2 = airTempLagged2 * prcpLagged2
+                  , airTemp.swe = airTemp * swe
+                  , airTempLagged1.swe = airTempLagged1 * swe
+                  , airTempLagged2.swe = airTempLagged2 * swe
+    )
+  return(data)
+}
+
+
+
 #' @title indexDeployments: Create an index for each unique temperature logger deployment
 #'
 #' @description
@@ -267,34 +308,6 @@ prepDataWrapper <- function(data.fit = NULL, var.names, dataInDir, dataOutDir, p
   }
 }
 
-
-#' @title addInteractions: Add intercepts, interaction, and polynomial terms to dataframe
-#'
-#' @description
-#' \code{addInteractions} Add intercepts, interaction, and polynomial terms to dataframe
-#'
-#' @param data Dataframe of covariates to model or predict daily stream temperature
-#' @return Original dataframe plus the additional terms
-#' @details
-#' By making this a function it can easily get added to multiple places in the data prep for validation, fitting, or predicting. Then there is only one place where the interactions have to be specified
-#' @examples
-#' 
-#' \dontrun{
-#' tempDataSyncS <- addInteractions(tempDataSyncS)
-#' }
-#' @export
-addInteractions <- function(data) {
-  data <- data %>%
-    dplyr::mutate(intercept = 1 
-                  , airTemp.TotDASqKM = airTemp * TotDASqKM
-                  , intercept.site = 1
-                  , airTemp.prcp = airTemp * prcp
-                  , intercept.year = 1
-                  , dOY2 = dOY ^ 2
-                  , dOY3 = dOY ^ 3
-    )
-  return(data)
-}
 
 #' @title prepDF: Prepares dataframe for use or prediction
 #'

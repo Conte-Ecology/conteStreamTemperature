@@ -36,12 +36,84 @@ predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list) {
     rowSums(as.matrix(select(df, one_of(cov.list$year.ef))) * as.matrix(select(df, one_of(names(B.year[-1])))))
   
   # Add B.ar1 to predictions
-    df <- mutate(df, prev.temp = c(NA, temp[(2:(nrow(data))) -1]))
-    df <- mutate(df, prev.trend = c(NA, trend[(2:nrow(data)) - 1]))
-    df <- mutate(df, prev.err = prev.temp - prev.trend)
-    df <- mutate(df, tempPredicted = trend + B.ar1 * prev.err)
+  df <- mutate(df, prev.temp = c(NA, temp[(2:(nrow(data))) -1]))
+  df <- mutate(df, prev.trend = c(NA, trend[(2:nrow(data)) - 1]))
+  df <- mutate(df, prev.err = prev.temp - prev.trend)
+  df <- mutate(df, tempPredicted = trend)
+  df[which(!is.na(df$prev.err)), ]$tempPredicted <- df[which(!is.na(df$prev.err)), ]$trend + df[which(!is.na(df$prev.err)), ]$B.ar1 * df[which(!is.na(df$prev.err)), ]$prev.err
   
   return(df)
+}
+
+#' @title prepPredictDF
+#'
+#' @description
+#' \code{prepPredictDF} Helper function to prepare dataframe for predictions
+#'
+#' @param data Dataframe for which predictions will be calculated
+#' @param cov.list List of covariates used in the model
+#' @param coef.list List of coefficient values estimated from the model
+#' 
+#' @return Returns Dataframe of covariates, coefficients from a fitted model, and observed temperature when available
+#' @details
+#' Used within the predictTemp function
+#'  
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
+prepPredictDF <- function(data, coef.list, cov.list, var.name) {
+  B <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = var.name)
+  if(var.name == "ar1") {
+    var.name <- "site"
+    data[ , var.name] <- as.factor(data[ , var.name])
+    B <- dplyr::select(B, site = site, B.ar1 = mean)
+    df <- left_join(data, B, by = var.name)
+    df[ , names(B[-1])][is.na(df[ , names(B[-1])])] <- colMeans(B[-1]) # replace NA with mean
+  } else {
+    B[ , var.name] <- as.character(B[ , var.name])
+    data[ , var.name] <- as.character(data[ , var.name])
+    df <- left_join(data, B, by = var.name) # merge so can apply/mutate by rows without a slow for loop
+    for(i in 2:length(names(B))) {
+      df[ , names(B[i])][is.na(df[ , names(B[i])])] <- colMeans(B[i])
+    }
+    #df[ , names(B[-1])][is.na(df[ , names(B[-1])])] <- colMeans(B[-1]) # replace NA with mean
+  }
+  return(df)
+}
+
+#' @title prepConditionalCoef
+#'
+#' @description
+#' \code{prepConditionalCoef} Helper function to prepare dataframe for predictions
+#'
+#' @param cov.list List of covariates used in the model
+#' @param coef.list List of coefficient values estimated from the model
+#' @param var.name Name of variable for which coefficients need to be organized
+#' 
+#' @return Returns Dataframe of coefficients from a fitted model associated with a variable (var.name)
+#' @details
+#' Used within the prepPredictDF function
+#'  
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
+prepConditionalCoef <- function(coef.list, cov.list, var.name) {
+  if(var.name == "ar1") {
+    B <- coef.list[[paste0("B.", var.name)]]
+  } else {
+    f <- paste0(var.name, " ~ coef")
+    B <- dcast(coef.list[[paste0("B.", var.name)]], formula = as.formula(f), value.var = "mean") # conver long to wide
+    B <- dplyr::select(B, one_of(c(var.name, cov.list[[paste0(var.name, ".ef")]]))) # recorder to match for matrix multiplcation
+    names(B) <- c(names(B[1]), paste0(names(B[-1]), ".B.", var.name)) # rename so can differentiate coeficients from variables
+  }
+  
+  return(B)
 }
 
 
@@ -64,7 +136,8 @@ predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list) {
 #' plotPredict(observed = tempDataSync, predicted = tempFull, siteList = "ALL", yearList = "ALL", dir = paste0(dataLocalDir,'/', 'plots/fullRecord/'))
 #' }
 #' @export
-plotPredict <- function(observed, predicted, siteList = "ALL", yearList = "ALL", dir = getwd()){ # add option to not include predicted or make similar function that makes observation plots
+plotPredict <- function(observed, predicted, siteList = "ALL", yearList = "ALL", dir = getwd(), display = FALSE){ # add option to not include predicted or make similar function that makes observation plots
+  if(siteList == "ALL" & display == TRUE) stop("If plots wanted for all sites change display to FALSE and set output directory for saved plots")
   if(siteList == "ALL"){
     sites <- unique(as.character(predicted$site))
   } else {
@@ -77,10 +150,10 @@ plotPredict <- function(observed, predicted, siteList = "ALL", yearList = "ALL",
   }
   
   ###### Need to convert back to original scale or join with original DF
-  predicted.origin.scale <- left_join(observed, predicted[ , c("site", "date", "tempPredicted")], by = c("site", "date"))
+  #predicted.origin.scale <- left_join(observed, predicted[ , c("site", "date", "tempPredicted")], by = c("site", "date"))
   
   for(i in 1:length(unique(sites))){
-    dataSite <- dplyr::filter(predicted.origin.scale, filter = site == sites[i] & year %in% years)
+    dataSite <- dplyr::filter(predicted, filter = site == sites[i] & year %in% years)
     #dataSiteObs <- dplyr::filter(observed, filter = site == sites[i] & year %in% years)
     foo <- ggplot(dataSite, aes(dOY, tempPredicted)) + 
       coord_cartesian(xlim = c(100, 300), ylim = c(0, 35)) + 
@@ -91,8 +164,20 @@ plotPredict <- function(observed, predicted, siteList = "ALL", yearList = "ALL",
       ggtitle(dataSite$site[i]) + 
       facet_wrap(~year) + 
       xlab(label = 'Day of the year') + ylab('Temperature (C)') + 
-      theme(axis.text.x = element_text(angle = 45))
-    ggsave(filename=paste0(dir, dataSite$site[i], '.png'), plot=foo, dpi=300 , width=12,height=8, units='in' )
+      theme(axis.text.x = element_text(angle = 45), 
+            axis.text.y = element_text(colour = 'black'),
+            axis.ticks = element_line(colour = 'black'),
+            legend.key = element_rect(colour = "grey80"), 
+            panel.background = element_rect(fill = "white", colour = NA), 
+            panel.border = element_rect(fill = NA, colour = "grey50"), 
+            panel.grid.major = element_line(colour = "grey", size = 0.2), 
+            panel.grid.minor = element_line(colour = "grey98", size = 0.5), 
+            strip.background = element_rect(fill = "grey80", colour = "grey50", size = 0.2))
+    if(display) {
+      print(foo)
+    } else {
+      ggsave(filename=paste0(dir, dataSite$site[i], '.png'), plot=foo, dpi=300, width=12, height=8, units='in' )
+    }
   } # surprisingly fast but wouldn't do for all catchments
 }
 
@@ -163,70 +248,106 @@ predCubic <- function( v ){
    
 } 
 
-#' @title prepPredictDF
+#' @title deriveMetrics
 #'
 #' @description
-#' \code{prepPredictDF} Helper function to prepare dataframe for predictions
+#' \code{deriveMetrics} Calculate derived metrics from predicted stream temperatures
 #'
-#' @param data Dataframe for which predictions will be calculated
-#' @param cov.list List of covariates used in the model
-#' @param coef.list List of coefficient values estimated from the model
+#' @param data Dataframe that includes at least site, year, temp (observed), and tempPredicted
 #' 
-#' @return Returns Dataframe of covariates, coefficients from a fitted model, and observed temperature when available
+#' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each site across all years
 #' @details
-#' Used within the predictTemp function
+#' This function calculates the following metrics based on predicted stream temperature across years
+#' 
+#' * total observations (days with data) per site
+#' * Mean maximum daily mean temperature by site (over years)
+#' * Maximum max daily mean temperature
+#' * Number of days with stream temp > 18C
+#' * Number of years with mean maximum over 18 C
+#' * frequency of years with a mean max over 18 C
+#' * Mean resistance to peak air temperature (difference between observed air and predicted stream temperatures during the hottest part of the year)
+#' * Mean RMSE for each site
+#' * Flag based on RMSE > 95%. These sites should probably be checked for unrecorded impoundments, restrictive culverts, or large groundwater influences before making management or policy decisions
+#' 
 #'  
 #' @examples
 #' 
 #' \dontrun{
+#' df <- predictTemp(data = df, data.fit = tempDataSyncS, cov.list = cov.list, coef.list = coef.list)
+#' derived.metrics <- deriveMetrics(data = df)
 #' 
 #' }
 #' @export
-prepPredictDF <- function(data, coef.list, cov.list, var.name) {
-  B <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = var.name)
-  if(var.name == "ar1") {
-    var.name <- "site"
-    data[ , var.name] <- as.factor(data[ , var.name])
-    B <- dplyr::select(B, site = site, B.ar1 = mean)
-    df <- left_join(data, B, by = var.name)
-    df[ , names(B[-1])][is.na(df[ , names(B[-1])])] <- colMeans(B[-1]) # replace NA with mean
-  } else {
-    data[ , var.name] <- as.factor(data[ , var.name])
-    df <- left_join(data, B, by = var.name) # merge so can apply/mutate by rows without a slow for loop
-    df[ , names(B[-1])][is.na(df[ , names(B[-1])])] <- colMeans(B[-1]) # replace NA with mean
-  }
-  return(df)
-}
+deriveMetrics <- function(data) {
+  library(dplyr)
 
-#' @title prepConditionalCoef
-#'
-#' @description
-#' \code{prepConditionalCoef} Helper function to prepare dataframe for predictions
-#'
-#' @param cov.list List of covariates used in the model
-#' @param coef.list List of coefficient values estimated from the model
-#' @param var.name Name of variable for which coefficients need to be organized
-#' 
-#' @return Returns Dataframe of coefficients from a fitted model associated with a variable (var.name)
-#' @details
-#' Used within the prepPredictDF function
-#'  
-#' @examples
-#' 
-#' \dontrun{
-#' 
-#' }
-#' @export
-prepConditionalCoef <- function(coef.list, cov.list, var.name) {
-  if(var.name == "ar1") {
-    B <- coef.list[[paste0("B.", var.name)]]
-  } else {
-    f <- paste0(var.name, " ~ coef")
-    B <- dcast(coef.list[[paste0("B.", var.name)]], formula = as.formula(f), value.var = "mean") # conver long to wide
-    B <- dplyr::select(B, one_of(c(var.name, cov.list[[paste0(var.name, ".ef")]]))) # recorder to match for matrix multiplcation
-    names(B) <- c(names(B[1]), paste0(names(B[-1]), ".B.", var.name)) # rename so can differentiate coeficients from variables
-  }
+  bySite <- group_by(data, site)
+  bySiteYear <- group_by(bySite, year, add = TRUE)
+  #(maxTempSite <- dplyr::dplyr::summarise(bySite, max(tempPredicted, na.rm = T)))
   
-  return(B)
+  # total observations (days with data) per site
+  derivedSiteMetrics <- bySiteYear %>%
+    filter(!is.na(temp)) %>%
+    dplyr::summarise(Obs = n()) %>%
+    dplyr::summarise(totalObs = sum(Obs)) %>%
+    dplyr::select(site, totalObs)
+  #names(derivedSiteMetrics) <- c("site", "year", "totalObs")
+  
+  # Mean maximum daily mean temperature by site (over years)
+  meanMaxTemp <- bySiteYear %>%
+    dplyr::summarise(maxTempPredicted = max(tempPredicted, na.rm = T)) %>%
+    dplyr::summarise(meanMaxTemp = mean(maxTempPredicted))
+  derivedSiteMetrics <- left_join(derivedSiteMetrics, meanMaxTemp, by = "site")
+  rm(meanMaxTemp)
+  
+  # Maximum max daily mean temperature
+  maxMaxTemp <- bySiteYear %>%
+    dplyr::summarise(maxTemp = max(tempPredicted, na.rm = T)) %>%
+    dplyr::summarise(maxMaxTemp = max(maxTemp))
+  derivedSiteMetrics <- left_join(derivedSiteMetrics, maxMaxTemp, by = "site")
+  rm(maxMaxTemp)
+  
+  # Number of days with stream temp > 18C
+  meanDays18 <- bySiteYear %>%
+    filter(tempPredicted > 18) %>%
+    dplyr::summarise(days18 = n()) %>%
+    dplyr::summarise(meanDays18 = mean(days18, na.rm = T))
+  derivedSiteMetrics <- left_join(derivedSiteMetrics, meanDays18, by = "site")
+  rm(meanDays18)
+  
+  # Number of years with mean maximum over 18 C
+  yearsMaxTemp18 <- bySiteYear %>%
+    dplyr::summarise(maxTemp = max(tempPredicted, na.rm = T)) %>%
+    filter(maxTemp > 18) %>%
+    dplyr::summarise(yearsMaxTemp18 = n())
+  derivedSiteMetrics <- left_join(derivedSiteMetrics, yearsMaxTemp18, by = "site")
+  rm(yearsMaxTemp18)
+  
+  # frequency of years with a mean max over 18 C
+  derivedSiteMetrics <- mutate(derivedSiteMetrics, freqMax18 = yearsMaxTemp18/length(unique(bySiteYear$year)))
+  
+  # Resistance to peak air temperature
+  ## Need to think of a way to make more general rather than by specific dOY (60 day max moving window air temp?)
+  meanResist <- bySiteYear %>%
+    filter(dOY >= 145 & dOY <= 275) %>%
+    mutate(absResid = abs(airTemp - tempPredicted)) %>%
+    dplyr::summarise(resistance = sum(absResid, na.rm = T)) %>%
+    dplyr::summarise(meanResist = mean(resistance, na.rm = T))
+  derivedSiteMetrics <- left_join(derivedSiteMetrics, meanResist, by = "site")
+  rm(meanResist)
+  
+  # RMSE for each site (flag highest)
+  meanRMSE <- bySiteYear %>%
+    filter(!(is.na(temp))) %>%
+    mutate(error2 = (temp - tempPredicted)^2) %>%
+    dplyr::summarise(RMSE = sqrt(mean(error2))) %>%
+    dplyr::summarise(meanRMSE = mean(RMSE))
+  derivedSiteMetrics <- left_join(derivedSiteMetrics, meanRMSE, by = "site")
+  
+  # Flag based on RMSE > 95%
+  derivedSiteMetrics <- mutate(derivedSiteMetrics, flag = ifelse(meanRMSE > quantile(derivedSiteMetrics$meanRMSE, probs = c(0.95), na.rm=TRUE), "Flag", ""))
+  
+  gc(verbose = FALSE)
+  
+  return(derivedSiteMetrics)
 }
-
