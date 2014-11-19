@@ -3,7 +3,7 @@
 \alias{deriveMetrics}
 \title{deriveMetrics}
 \usage{
-deriveMetrics(data)
+deriveMetrics(data, threshold = NULL)
 }
 \arguments{
 \item{data}{Dataframe that includes at least site, year, temp (observed), and tempPredicted}
@@ -20,9 +20,9 @@ This function calculates the following metrics based on predicted stream tempera
 * total observations (days with data) per site
 * Mean maximum daily mean temperature by site (over years)
 * Maximum max daily mean temperature
-* Number of days with stream temp > 18C
-* Number of years with mean maximum over 18 C
-* frequency of years with a mean max over 18 C
+* Number of days with stream temp > 18, 20, 22 C and optional user-defined temperature
+* Number of years with mean maximum over 18, 20, 22 C and optional user-defined temperature
+* frequency of years with a mean max over 18, 20, 22 C and optional user-defined temperature
 * Mean resistance to peak air temperature (difference between observed air and predicted stream temperatures during the hottest part of the year)
 * Mean RMSE for each site
 * Flag based on RMSE > 95%. These sites should probably be checked for unrecorded impoundments, restrictive culverts, or large groundwater influences before making management or policy decisions

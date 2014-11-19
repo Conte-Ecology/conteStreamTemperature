@@ -262,9 +262,9 @@ predCubic <- function( v ){
 #' * total observations (days with data) per site
 #' * Mean maximum daily mean temperature by site (over years)
 #' * Maximum max daily mean temperature
-#' * Number of days with stream temp > 18C
-#' * Number of years with mean maximum over 18 C
-#' * frequency of years with a mean max over 18 C
+#' * Number of days with stream temp > 18, 20, 22 C and optional user-defined temperature
+#' * Number of years with mean maximum over 18, 20, 22 C and optional user-defined temperature
+#' * frequency of years with a mean max over 18, 20, 22 C and optional user-defined temperature
 #' * Mean resistance to peak air temperature (difference between observed air and predicted stream temperatures during the hottest part of the year)
 #' * Mean RMSE for each site
 #' * Flag based on RMSE > 95%. These sites should probably be checked for unrecorded impoundments, restrictive culverts, or large groundwater influences before making management or policy decisions
@@ -278,7 +278,7 @@ predCubic <- function( v ){
 #' 
 #' }
 #' @export
-deriveMetrics <- function(data) {
+deriveMetrics <- function(data, threshold = NULL) {
   library(dplyr)
 
   bySite <- group_by(data, site)
@@ -307,24 +307,17 @@ deriveMetrics <- function(data) {
   derivedSiteMetrics <- left_join(derivedSiteMetrics, maxMaxTemp, by = "site")
   rm(maxMaxTemp)
   
-  # Number of days with stream temp > 18C
-  meanDays18 <- bySiteYear %>%
-    filter(tempPredicted > 18) %>%
-    dplyr::summarise(days18 = n()) %>%
-    dplyr::summarise(meanDays18 = mean(days18, na.rm = T))
-  derivedSiteMetrics <- left_join(derivedSiteMetrics, meanDays18, by = "site")
-  rm(meanDays18)
+  # Number of days with stream temp > threshold
+  derivedSiteMetrics <- calcThresholdDays(bySiteYear, derivedSiteMetrics, 18)
+  derivedSiteMetrics <- calcThresholdDays(bySiteYear, derivedSiteMetrics, 20)
+  derivedSiteMetrics <- calcThresholdDays(bySiteYear, derivedSiteMetrics, 22)
+  if(class(threshold) == "numeric") derivedSiteMetrics <- calcThresholdDays(bySiteYear, derivedSiteMetrics, threshold)
   
-  # Number of years with mean maximum over 18 C
-  yearsMaxTemp18 <- bySiteYear %>%
-    dplyr::summarise(maxTemp = max(tempPredicted, na.rm = T)) %>%
-    filter(maxTemp > 18) %>%
-    dplyr::summarise(yearsMaxTemp18 = n())
-  derivedSiteMetrics <- left_join(derivedSiteMetrics, yearsMaxTemp18, by = "site")
-  rm(yearsMaxTemp18)
-  
-  # frequency of years with a mean max over 18 C
-  derivedSiteMetrics <- mutate(derivedSiteMetrics, freqMax18 = yearsMaxTemp18/length(unique(bySiteYear$year)))
+  # Number and frequency of years with mean max over threshold
+  derivedSiteMetrics <- calcYearsMaxTemp(grouped.df = bySiteYear, derived.df = derivedSiteMetrics, temp.threshold = 18)
+  derivedSiteMetrics <- calcYearsMaxTemp(grouped.df = bySiteYear, derived.df = derivedSiteMetrics, temp.threshold = 20)
+  derivedSiteMetrics <- calcYearsMaxTemp(grouped.df = bySiteYear, derived.df = derivedSiteMetrics, temp.threshold = 22)
+  if(class(threshold) == "numeric") derivedSiteMetrics <- calcYearsMaxTemp(bySiteYear, derivedSiteMetrics, threshold)
   
   # Resistance to peak air temperature
   ## Need to think of a way to make more general rather than by specific dOY (60 day max moving window air temp?)
@@ -350,4 +343,76 @@ deriveMetrics <- function(data) {
   gc(verbose = FALSE)
   
   return(derivedSiteMetrics)
+}
+
+
+#' @title calcThresholdDays
+#'
+#' @description
+#' \code{calcThresholdDays} Calculate derived metrics from predicted stream temperatures
+#'
+#' @param grouped.df Dataframe grouped by site then year
+#' @param derived.df Dataframe of derived metrics
+#' @param temp.threshold Optional numeric temperature threshold value in degrees C
+#' 
+#' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each site across all years
+#' @details
+#' blah, blah, blah, something, something
+#' 
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
+calcThresholdDays <- function(grouped.df, derived.df, temp.threshold) {
+  var.name <- paste0("meanDays.", temp.threshold)
+  meanDays <- grouped.df %>%
+    filter(tempPredicted > temp.threshold) %>%
+    dplyr::summarise(days = n()) %>%
+    dplyr::summarise(meanDays = mean(days, na.rm = T)) %>%
+    setNames(c("site", var.name))
+  derived.df <- left_join(derived.df, meanDays, by = "site")
+  derived.df[ , var.name][is.na(derived.df[ , var.name])] <- 0
+  rm(meanDays)
+  
+  return(derived.df)
+}
+
+#' @title calcYearsMaxTemp
+#'
+#' @description
+#' \code{calcYearsMaxTemp} Calculate derived metrics from predicted stream temperatures
+#'
+#' @param grouped.df Dataframe grouped by site then year
+#' @param derived.df Dataframe of derived metrics
+#' @param temp.threshold Optional numeric temperature threshold value in degrees C
+#' 
+#' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each site across all years
+#' @details
+#' blah, blah, blah, something, something
+#' 
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
+calcYearsMaxTemp <- function(grouped.df, derived.df, temp.threshold) {
+  library(lazyeval)
+  var.name1 <- paste0("yearsMaxTemp.", temp.threshold)
+  var.name2 <- paste0("freqMax.", temp.threshold)
+  dots <- list(~n)
+  yearsMaxTemp <- grouped.df %>%
+    dplyr::summarise(maxTemp = max(tempPredicted, na.rm = T)) %>%
+    filter(maxTemp > temp.threshold) %>%
+    dplyr::summarise(yearsMaxTemp = n()) %>%
+    mutate(freqMax = yearsMaxTemp / length(unique(grouped.df$year))) %>%
+    setNames(c("site", var.name1, var.name2))
+  derived.df <- left_join(derived.df, yearsMaxTemp, by = "site")
+  derived.df[ , var.name1][is.na(derived.df[ , var.name1])] <- 0
+  derived.df[ , var.name2][is.na(derived.df[ , var.name2])] <- 0
+  rm(yearsMaxTemp)
+  
+  return(derived.df)
 }
