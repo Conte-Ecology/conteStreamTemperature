@@ -255,11 +255,11 @@ predCubic <- function( v ){
 #' @description
 #' \code{calcThresholdDays} Calculate derived metrics from predicted stream temperatures
 #'
-#' @param grouped.df Dataframe grouped by site then year
+#' @param grouped.df Dataframe grouped by featureid then year
 #' @param derived.df Dataframe of derived metrics
 #' @param temp.threshold Optional numeric temperature threshold value in degrees C
 #' 
-#' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each site across all years
+#' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
 #' @details
 #' blah, blah, blah, something, something
 #' 
@@ -277,17 +277,17 @@ calcThresholdDays <- function(grouped.df, derived.df, temp.threshold, summer = F
       filter(month >= 6 & month <= 8) %>%
       filter(tempPredicted > temp.threshold) %>%
       dplyr::summarise(days = n()) %>%
-      dplyr::summarise(meanDays = mean(days, na.rm = T)) %>%
+      dplyr::summarise(meanDays = round(median(days, na.rm = T))) %>%
       dplyr::select(-month) %>%
-      setNames(c("site", var.name))
+      setNames(c("featureid", var.name))
   } else { 
     meanDays <- grouped.df %>%
       filter(tempPredicted > temp.threshold) %>%
       dplyr::summarise(days = n()) %>%
-      dplyr::summarise(meanDays = mean(days, na.rm = T)) %>%
-      setNames(c("site", var.name))
+      dplyr::summarise(meanDays = round(median(days, na.rm = T))) %>%
+      setNames(c("featureid", var.name))
   }
-  derived.df <- left_join(derived.df, meanDays, by = "site")
+  derived.df <- left_join(derived.df, meanDays, by = "featureid")
   derived.df[ , var.name][is.na(derived.df[ , var.name])] <- 0
   rm(meanDays)
   
@@ -299,11 +299,11 @@ calcThresholdDays <- function(grouped.df, derived.df, temp.threshold, summer = F
 #' @description
 #' \code{calcYearsMaxTemp} Calculate derived metrics from predicted stream temperatures
 #'
-#' @param grouped.df Dataframe grouped by site then year
+#' @param grouped.df Dataframe grouped by featureid then year
 #' @param derived.df Dataframe of derived metrics
 #' @param temp.threshold Optional numeric temperature threshold value in degrees C
 #' 
-#' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each site across all years
+#' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
 #' @details
 #' blah, blah, blah, something, something
 #' 
@@ -327,15 +327,15 @@ calcYearsMaxTemp <- function(grouped.df, derived.df, temp.threshold, summer = FA
       dplyr::summarise(yearsMaxTemp = n()) %>%
       mutate(freqMax = yearsMaxTemp / length(unique(grouped.df$year))) %>%
       dplyr::select(-month)
-      setNames(c("site", var.name1, var.name2))
+      setNames(c("featureid", var.name1, var.name2))
   }
   yearsMaxTemp <- grouped.df %>%
     dplyr::summarise(maxTemp = max(tempPredicted, na.rm = T)) %>%
     filter(maxTemp > temp.threshold) %>%
     dplyr::summarise(yearsMaxTemp = n()) %>%
     mutate(freqMax = yearsMaxTemp / length(unique(grouped.df$year))) %>%
-    setNames(c("site", var.name1, var.name2))
-  derived.df <- left_join(derived.df, yearsMaxTemp, by = "site")
+    setNames(c("featureid", var.name1, var.name2))
+  derived.df <- left_join(derived.df, yearsMaxTemp, by = "featureid")
   derived.df[ , var.name1][is.na(derived.df[ , var.name1])] <- 0
   derived.df[ , var.name2][is.na(derived.df[ , var.name2])] <- 0
   rm(yearsMaxTemp)
@@ -348,11 +348,11 @@ calcYearsMaxTemp <- function(grouped.df, derived.df, temp.threshold, summer = FA
 #' @description
 #' \code{calcYearsCold} Calculate derived metrics from predicted stream temperatures
 #'
-#' @param grouped.df Dataframe grouped by site then year
+#' @param grouped.df Dataframe grouped by featureid then year
 #' @param derived.df Dataframe of derived metrics
 #' @param state Character string for specific State 
 #' 
-#' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each site across all years
+#' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
 #' @details
 #' Different states have different classifications of cold, cool, and warm streams for regulatory purposes. This function takes the state abreviation and returns the number and frequency of years that any stream reach is expected to fall within each category.
 #' 
@@ -381,8 +381,8 @@ calcYearsCold <- function(grouped.df, derived.df, temp.threshold, states) {
       dplyr::summarise(yearsCold = n()) %>%
       mutate(freqCold = yearsCold / length(unique(grouped.df$year))) %>%
       dplyr::select(-month)
-    setNames(c("site", var.name1, var.name2))
-    derived.df <- left_join(derived.df, yearsCold, by = "site")
+    setNames(c("featureid", var.name1, var.name2))
+    derived.df <- left_join(derived.df, yearsCold, by = "featureid")
     derived.df[ , var.name1][is.na(derived.df[ , var.name1])] <- 0
     derived.df[ , var.name2][is.na(derived.df[ , var.name2])] <- 0
     rm(yearsCold)
@@ -398,8 +398,8 @@ calcYearsCold <- function(grouped.df, derived.df, temp.threshold, states) {
       dplyr::summarise(yearsCool = n()) %>%
       mutate(freqCold = yearsCool / length(unique(grouped.df$year))) %>%
       dplyr::select(-month)
-    setNames(c("site", var.name1, var.name2))
-    derived.df <- left_join(derived.df, yearsCool, by = "site")
+    setNames(c("featureid", var.name1, var.name2))
+    derived.df <- left_join(derived.df, yearsCool, by = "featureid")
     derived.df[ , var.name1][is.na(derived.df[ , var.name1])] <- 0
     derived.df[ , var.name2][is.na(derived.df[ , var.name2])] <- 0
     rm(yearsCool)
@@ -415,8 +415,8 @@ calcYearsCold <- function(grouped.df, derived.df, temp.threshold, states) {
       dplyr::summarise(yearsCool = n()) %>%
       mutate(freqCold = yearsCool / length(unique(grouped.df$year))) %>%
       dplyr::select(-month)
-    setNames(c("site", var.name1, var.name2))
-    derived.df <- left_join(derived.df, yearsCool, by = "site")
+    setNames(c("featureid", var.name1, var.name2))
+    derived.df <- left_join(derived.df, yearsCool, by = "featureid")
     derived.df[ , var.name1][is.na(derived.df[ , var.name1])] <- 0
     derived.df[ , var.name2][is.na(derived.df[ , var.name2])] <- 0
     rm(yearsCool)
@@ -430,14 +430,14 @@ calcYearsCold <- function(grouped.df, derived.df, temp.threshold, states) {
 #' @description
 #' \code{deriveMetrics} Calculate derived metrics from predicted stream temperatures
 #'
-#' @param data Dataframe that includes at least site, year, temp (observed), and tempPredicted
+#' @param data Dataframe that includes at least featureid, year, temp (observed), and tempPredicted
 #' 
-#' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each site across all years
+#' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
 #' @details
 #' This function calculates the following metrics based on predicted stream temperature across years
 #' 
-#' * total observations (days with data) per site
-#' * Mean maximum daily mean temperature by site (over years)
+#' * total observations (days with data) per featureid
+#' * Mean maximum daily mean temperature by featureid (over years)
 #' * Maximum max daily mean temperature
 #' * Number of days with stream temp > 18, 20, 22 C and optional user-defined temperature
 #' * Number of years with mean maximum over 18, 20, 22 C and optional user-defined temperature
@@ -446,8 +446,8 @@ calcYearsCold <- function(grouped.df, derived.df, temp.threshold, states) {
 #' * Number of years with summer maximum over 18.29 & 21.7 C for CT DEEP
 #' * frequency of years with a summer max over 18.29 & 21.7 C for CT DEEP
 #' * Mean resistance to peak air temperature (difference between observed air and predicted stream temperatures during the hottest part of the year)
-#' * Mean RMSE for each site
-#' * Flag based on RMSE > 95%. These sites should probably be checked for unrecorded impoundments, restrictive culverts, or large groundwater influences before making management or policy decisions
+#' * Mean RMSE for each featureid
+#' * Flag based on RMSE > 95%. These featureids should probably be checked for unrecorded impoundments, restrictive culverts, or large groundwater influences before making management or policy decisions
 #' 
 #'  
 #' @examples
@@ -462,74 +462,88 @@ deriveMetrics <- function(data, threshold = NULL) {
   library(dplyr)
   library(zoo)
   
-  bySite <- group_by(data, site)
-  bySiteYear <- group_by(bySite, year, add = TRUE)
-  #(maxTempSite <- dplyr::dplyr::summarise(bySite, max(tempPredicted, na.rm = T)))
+  byfeatureid <- group_by(data, featureid)
+  byfeatureid <- group_by(fullDataSync, featureid)
+  byfeatureidYear <- group_by(byfeatureid, year, add = TRUE)
+  #(maxTempfeatureid <- dplyr::dplyr::summarise(byfeatureid, max(tempPredicted, na.rm = T)))
   
-  # total observations (days with data) per site
-  derivedSiteMetrics <- bySiteYear %>%
+  # Mean maximum daily mean temperature by featureid (over years)
+  meanMaxTemp <- byfeatureidYear %>%
+    dplyr::summarise(maxTempPredicted = max(tempPredicted, na.rm = T)) %>%
+    dplyr::summarise(meanMaxTemp = mean(maxTempPredicted))
+  derivedfeatureidMetrics <- meanMaxTemp
+  rm(meanMaxTemp)
+  
+  # total observations (days with data) per featureid
+  totalObs <- byfeatureidYear %>%
     filter(!is.na(temp)) %>%
     dplyr::summarise(Obs = n()) %>%
     dplyr::summarise(totalObs = sum(Obs)) %>%
-    dplyr::select(site, totalObs)
-  #names(derivedSiteMetrics) <- c("site", "year", "totalObs")
-  
-  # Mean maximum daily mean temperature by site (over years)
-  meanMaxTemp <- bySiteYear %>%
-    dplyr::summarise(maxTempPredicted = max(tempPredicted, na.rm = T)) %>%
-    dplyr::summarise(meanMaxTemp = mean(maxTempPredicted))
-  derivedSiteMetrics <- left_join(derivedSiteMetrics, meanMaxTemp, by = "site")
-  rm(meanMaxTemp)
+    dplyr::select(featureid, totalObs)
+  derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, totalObs, by = "featureid") %>%
+    mutate(totalObs = ifelse(is.na(totalObs), 0, totalObs))
+  derivedfeatureidMetrics <- dplyr::select(derivedfeatureidMetrics, featureid, totalObs, meanMaxTemp)
   
   # Maximum max daily mean temperature
-  maxMaxTemp <- bySiteYear %>%
+  maxMaxTemp <- byfeatureidYear %>%
     dplyr::summarise(maxTemp = max(tempPredicted, na.rm = T)) %>%
     dplyr::summarise(maxMaxTemp = max(maxTemp))
-  derivedSiteMetrics <- left_join(derivedSiteMetrics, maxMaxTemp, by = "site")
+  derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, maxMaxTemp, by = "featureid")
   rm(maxMaxTemp)
   
   # Number of days with stream temp > threshold
-  derivedSiteMetrics <- calcThresholdDays(bySiteYear, derivedSiteMetrics, 18)
-  derivedSiteMetrics <- calcThresholdDays(bySiteYear, derivedSiteMetrics, 20)
-  derivedSiteMetrics <- calcThresholdDays(bySiteYear, derivedSiteMetrics, 22)
-  if(class(threshold) == "numeric") derivedSiteMetrics <- calcThresholdDays(bySiteYear, derivedSiteMetrics, threshold)
+  derivedfeatureidMetrics <- calcThresholdDays(byfeatureidYear, derivedfeatureidMetrics, 18)
+  derivedfeatureidMetrics <- calcThresholdDays(byfeatureidYear, derivedfeatureidMetrics, 20)
+  derivedfeatureidMetrics <- calcThresholdDays(byfeatureidYear, derivedfeatureidMetrics, 22)
+  if(class(threshold) == "numeric") derivedfeatureidMetrics <- calcThresholdDays(byfeatureidYear, derivedfeatureidMetrics, threshold)
   
   # CT DEEP Thresholds
-  derivedSiteMetrics <- calcYearsCold(bySiteYear, derivedSiteMetrics, states = c("CT"))
+  #derivedfeatureidMetrics <- calcYearsCold(byfeatureidYear, derivedfeatureidMetrics, states = c("CT"))
   
   # Number and frequency of years with mean max over threshold
-  derivedSiteMetrics <- calcYearsMaxTemp(grouped.df = bySiteYear, derived.df = derivedSiteMetrics, temp.threshold = 18)
-  derivedSiteMetrics <- calcYearsMaxTemp(grouped.df = bySiteYear, derived.df = derivedSiteMetrics, temp.threshold = 20)
-  derivedSiteMetrics <- calcYearsMaxTemp(grouped.df = bySiteYear, derived.df = derivedSiteMetrics, temp.threshold = 22)
-  if(class(threshold) == "numeric") derivedSiteMetrics <- calcYearsMaxTemp(bySiteYear, derivedSiteMetrics, threshold)
+  derivedfeatureidMetrics <- calcYearsMaxTemp(grouped.df = byfeatureidYear, derived.df = derivedfeatureidMetrics, temp.threshold = 18)
+  derivedfeatureidMetrics <- calcYearsMaxTemp(grouped.df = byfeatureidYear, derived.df = derivedfeatureidMetrics, temp.threshold = 20)
+  derivedfeatureidMetrics <- calcYearsMaxTemp(grouped.df = byfeatureidYear, derived.df = derivedfeatureidMetrics, temp.threshold = 22)
+  if(class(threshold) == "numeric") derivedfeatureidMetrics <- calcYearsMaxTemp(byfeatureidYear, derivedfeatureidMetrics, threshold)
   
   # Resistance to peak air temperature
   ## This probably makes the most sense during minimum flow periods but we don't have a sufficient flow model
   ## 60 or 90 days max air temp?
-  dOY.max.warm <- bySiteYear %>%
-    mutate(warm.90 = rollsum(x = airTemp, 90, align = "right", fill = NA)) %>%
-    filter(max(warm.90)) %>%
-    select(dOY)
-  meanResist <- bySiteYear %>%
-    filter(dOY > dOY.max.warm$dOY - 90 & dOY <= dOY.max.warm$dOY) %>%
+  # error if use standardized values rather than original scale
+ # dOY.max.warm <- byfeatureidYear %>%
+#    mutate(warm.90 = rollsum(x = airTemp, 90, align = "right", fill = NA))
+#  dOY.max.warm <- dOY.max.warm %>%
+ #   group_by(featureid, year, add = TRUE) %>%
+  #  filter(warm.90 == max(warm.90, na.rm = T)) %>%
+   # select(dOY)
+  meanResist <- byfeatureidYear %>%
+    #filter(dOY > dOY.max.warm$dOY - 90 & dOY <= dOY.max.warm$dOY) %>%
+    filter(dOY >= 152 & dOY < 244) %>% # clip to summer
     mutate(absResid = abs(airTemp - tempPredicted)) %>%
     dplyr::summarise(resistance = sum(absResid, na.rm = T)) %>%
     dplyr::summarise(meanResist = mean(resistance, na.rm = T))
-  derivedSiteMetrics <- left_join(derivedSiteMetrics, meanResist, by = "site")
+  derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, meanResist, by = "featureid")
   rm(meanResist)
   
-  # RMSE for each site (flag highest)
-  meanRMSE <- bySiteYear %>%
-    filter(!(is.na(temp))) %>%
-    mutate(error2 = (temp - tempPredicted)^2) %>%
+   # RMSE for each featureid (flag highest)
+foo <- byfeatureidYear %>%
+  filter(!(is.na(temp))) %>%
+  mutate(error2 = (temp - tempPredicted)^2)
+
+if(dim(foo)[1] > 0) {
+  meanRMSE <- foo %>%
     dplyr::summarise(RMSE = sqrt(mean(error2))) %>%
     dplyr::summarise(meanRMSE = mean(RMSE))
-  derivedSiteMetrics <- left_join(derivedSiteMetrics, meanRMSE, by = "site")
+  derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, meanRMSE, by = "featureid")
+} else {
+  derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, rename(foo, meanRMSE = error2), by = "featureid")
+}
   
   # Flag based on RMSE > 95%
-  derivedSiteMetrics <- mutate(derivedSiteMetrics, flag = ifelse(meanRMSE > quantile(derivedSiteMetrics$meanRMSE, probs = c(0.95), na.rm=TRUE), "Flag", ""))
+# add an ifelse for whether data is present or not #######################
+  derivedfeatureidMetrics <- mutate(derivedfeatureidMetrics, flag = ifelse(meanRMSE > quantile(derivedfeatureidMetrics$meanRMSE, probs = c(0.95), na.rm=TRUE), "Flag", ""))
   
   gc(verbose = FALSE)
   
-  return(derivedSiteMetrics)
+  return(derivedfeatureidMetrics)
 }
