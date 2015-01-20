@@ -3,17 +3,17 @@
 \alias{calcYearsMaxTemp}
 \title{calcYearsMaxTemp}
 \usage{
-calcYearsMaxTemp(grouped.df, derived.df, temp.threshold)
+calcYearsMaxTemp(grouped.df, derived.df, temp.threshold, summer = FALSE)
 }
 \arguments{
-\item{grouped.df}{Dataframe grouped by site then year}
+\item{grouped.df}{Dataframe grouped by featureid then year}
 
 \item{derived.df}{Dataframe of derived metrics}
 
 \item{temp.threshold}{Optional numeric temperature threshold value in degrees C}
 }
 \value{
-Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each site across all years
+Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
 }
 \description{
 \code{calcYearsMaxTemp} Calculate derived metrics from predicted stream temperatures
