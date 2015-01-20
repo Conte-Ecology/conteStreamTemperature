@@ -108,7 +108,7 @@ prepConditionalCoef <- function(coef.list, cov.list, var.name) {
     B <- coef.list[[paste0("B.", var.name)]]
   } else {
     f <- paste0(var.name, " ~ coef")
-    B <- dcast(coef.list[[paste0("B.", var.name)]], formula = as.formula(f), value.var = "mean") # conver long to wide
+    B <- dcast(coef.list[[paste0("B.", var.name)]], formula = as.formula(f), value.var = "mean") # convert long to wide
     B <- dplyr::select(B, one_of(c(var.name, cov.list[[paste0(var.name, ".ef")]]))) # recorder to match for matrix multiplcation
     names(B) <- c(names(B[1]), paste0(names(B[-1]), ".B.", var.name)) # rename so can differentiate coeficients from variables
   }

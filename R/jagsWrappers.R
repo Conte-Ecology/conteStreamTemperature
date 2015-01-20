@@ -69,7 +69,7 @@ modelRegionalTempAR1 <- function(data = tempDataSyncS, cov.list, formulae = NULL
       tau <- pow(sigma, -2)
       
       for(k in 1:K.0){
-        B.0[k] ~ dnorm(0, 0.001) # priors coefs for fixed effect predictors
+        B.0[k] ~ dnorm(0, 0.0001) # priors coefs for fixed effect predictors
       }
       
       # SITE Effects
