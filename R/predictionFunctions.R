@@ -339,32 +339,6 @@ calcYearsMaxTemp <- function(grouped.df, derived.df, temp.threshold, summer = FA
       dplyr::select(-month)
       #setNames(c("featureid", var.name1, var.name2))
   } else {
-  yearsMaxTemp <- grouped.df %>%
-    dplyr::summarise(maxTemp = max(tempPredicted, na.rm = T)) %>%
-    filter(maxTemp > temp.threshold) %>%
-    dplyr::summarise(yearsMaxTemp = n()) 
-  if(dim(yearsMaxTemp)[1] > 0) {
-  yearsMaxTemp <- yearsMaxTemp %>%
-    mutate(freqMax = yearsMaxTemp / length(unique(grouped.df$year))) %>%
-    dplyr::mutate(yearsMaxTemp = ifelse(is.na(yearsMaxTemp), 0, yearsMaxTemp)) %>%
-    dplyr::mutate(freqMax = ifelse(is.na(freqMax), 0, freqMax)) #%>%
-    #setNames(c("featureid", var.name1, var.name2))
-  } else {
-    yearsMaxTemp <- yearsMaxTemp %>%
-      mutate(yearsMaxTemp = NA) %>%
-      mutate(freqMax = NA) %>%
-      #setNames(c("featureid", var.name1, var.name2))
-  }
-  derived.df <- left_join(derived.df, yearsMaxTemp, by = "featureid")
-  #derived.df[ , var.name1][is.na(derived.df[ , var.name1])] <- 0
-  #derived.df[ , var.name2][is.na(derived.df[ , var.name2])] <- 0
-  rm(yearsMaxTemp)
-  
-  return(derived.df)
-}
-
-calcYearsMaxTemp <- function(grouped.df, derived.df, temp.threshold, summer = FALSE) {
-  var.name1 <- paste0("yearsMaxTemp.", temp.threshold)
     yearsMaxTemp <- grouped.df %>%
       dplyr::summarise(maxTemp = max(tempPredicted, na.rm = T)) %>%
       filter(maxTemp > temp.threshold) %>%
@@ -372,11 +346,11 @@ calcYearsMaxTemp <- function(grouped.df, derived.df, temp.threshold, summer = FA
     if(dim(yearsMaxTemp)[1] > 0) {
       yearsMaxTemp <- yearsMaxTemp %>%
         dplyr::mutate(yearsMaxTemp = ifelse(is.na(yearsMaxTemp), 0, yearsMaxTemp)) #%>%
-        #setNames(c("featureid", var.name1, var.name2))
+      #setNames(c("featureid", var.name1, var.name2))
     } else {
       yearsMaxTemp <- yearsMaxTemp %>%
         mutate(yearsMaxTemp = NA) #%>%
-        #setNames(c("featureid", var.name1, var.name2))
+      #setNames(c("featureid", var.name1, var.name2))
     }
     derived.df <- left_join(derived.df, yearsMaxTemp, by = "featureid")
     #derived.df[ , var.name1][is.na(derived.df[ , var.name1])] <- 0
@@ -385,6 +359,7 @@ calcYearsMaxTemp <- function(grouped.df, derived.df, temp.threshold, summer = FA
     
     return(derived.df)
   }
+
   
 #' @title calcYearsCold
 #'
