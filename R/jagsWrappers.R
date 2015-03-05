@@ -87,7 +87,7 @@ modelRegionalTempAR1 <- function(data = tempDataSyncS, cov.list, formulae = NULL
       for(m in 1:M){ # M hucs
         B.huc[m, 1:K] ~ dmnorm(mu.huc[ ], tau.B.huc[ , ])
       }
-      mu.huc[1] <- 0
+      mu.huc[1] <- 0 # this would not be necessary if I didn't include an overall intercept term. The only difference is whether correlation is allowed between parameters and the intercept (currently not).
       for(k in 2:K){
         mu.huc[k] ~ dnorm(0, 0.0001)
       }
