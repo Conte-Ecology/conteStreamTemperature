@@ -16,20 +16,18 @@
 addInteractions <- function(data) {
   data <- data %>%
     dplyr::mutate(intercept = 1 
-                  , airTemp.TotDASqKM = airTemp * TotDASqKM
                   , intercept.site = 1
-                  , airTemp.prcp = airTemp * prcp
                   , intercept.year = 1
                   , dOY2 = dOY ^ 2
                   , dOY3 = dOY ^ 3
-                  , airTempLagged1.TotDASqKM = airTempLagged1 * TotDASqKM
-                  , airTempLagged2.TotDASqKM = airTempLagged2 * TotDASqKM
-                  , prcp.Forest = prcp * Forest
-                  , airTemp.prcpLagged1 = airTemp * prcpLagged1
-                  , airTemp.prcpLagged2 = airTemp * prcpLagged2
-                  , airTempLagged1.prcpLagged1 = airTempLagged1 * prcpLagged1
-                  , airTempLagged1.prcpLagged2 = airTempLagged1 * prcpLagged2
-                  , airTempLagged2.prcpLagged2 = airTempLagged2 * prcpLagged2
+                  , airTemp.forest = airTemp * forest # change to riparian forest
+                  , airTemp.prcp2.da = airTemp * prcp2 * AreaSqKM
+                  , airTemp.prcp2.da.forest = airTemp * prcp2 * AreaSqKM * forest # change to riparian forest
+                  , airTemp.prcp30.da = airTemp * prcp30 * AreaSqKM
+                  , temp7p.forest = temp7p * forest
+                  , temp7p.prcp7.da = temp7p * prcp7 * AreaSqKM
+                  , temp7p.forest.prcp7.da = temp7p * forest * prcp7 * AreaSqKM
+                  , srad.forest = srad * forest # change to riparian forest?
                   , airTemp.swe = airTemp * swe
                   , airTempLagged1.swe = airTempLagged1 * swe
                   , airTempLagged2.swe = airTempLagged2 * swe
