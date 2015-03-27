@@ -54,6 +54,7 @@ addInteractions <- function(data) {
 #' @export
 indexDeployments <- function(data, regional = FALSE) {
   tbl_df(data)
+  data <- ungroup(data)
   data$sitef <- as.numeric(as.factor(data$site))
     
   if(regional) {
