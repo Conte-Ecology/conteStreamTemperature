@@ -52,33 +52,26 @@ addInteractions <- function(data) {
 #' var: blah, blah, blah
 #' value: something, something
 #' @export
-indexDeployments <- function(data, regional = FALSE) {
+indexDeployments <- function (data, regional = FALSE) 
+{
   tbl_df(data)
   data <- ungroup(data)
   data$sitef <- as.numeric(as.factor(data$site))
-    
-  if(regional) {
-  data <- arrange(data, HUC8, site, date)
-  } else {
+  data$huc8f <- as.numeric(as.factor(data$HUC8))
+  if (regional) {
+    data <- arrange(data, huc8f, site, date)
+  }
+  else {
     data <- arrange(data, site, date)
   }
   data$rowNum <- 1:nrow(data)
-  
-#  test  
-#  data1=data.frame(site=rep(1:4,each=4),date=rep(1:4))
-#  data=rbind(data1,data1[15:16,])
-  
-  data <- 
-  data %>%
-      mutate( siteShift = c( 1,sitef[ 1:(nrow(data)-1) ] ),
-              dateShift = c( 1,date[ 1:(nrow(data)-1) ] ),
-              newSite = sitef == siteShift + 1,
-              newDate = date != dateShift + 1,
-              isNA = is.na(temp),
-              isNAShift = c(FALSE,isNA[ 1:(nrow(data)-1) ]),
-              newDeploy = (newSite | newDate | isNAShift) * 1,              
-              deployID= cumsum(newDeploy) )
-  
+  data <- data %>% dplyr::mutate(siteShift = c(1, sitef[1:(nrow(data) - 1)]), 
+                                 dateShift = c(1, date[1:(nrow(data) - 1)]), 
+                                 newSite = sitef == siteShift + 1, 
+                                 newDate = date != dateShift + 1, isNA = is.na(temp), 
+                                 isNAShift = c(FALSE, isNA[1:(nrow(data) - 1)]), 
+                                 newDeploy = (newSite | newDate | isNAShift) * 1, 
+                                 deployID = cumsum(newDeploy))
   return(data)
 }
 

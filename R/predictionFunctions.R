@@ -30,7 +30,7 @@ predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list) {
   
   
   df$trend <- NA
-  df$trend <- as.vector(coef.list$B.fixed$mean %*% t(as.matrix(select(data, one_of(cov.list$fixed.ef))))) +
+  df$trend <- as.vector(coef.list$B.fixed$mean %*% t(as.matrix(as.data.frame(unclass(select(ungroup(data), one_of(cov.list$fixed.ef))))))) +
     rowSums(as.matrix(select(df, one_of(cov.list$site.ef))) * as.matrix(select(df, one_of(names(B.site[-1]))))) +
     rowSums(as.matrix(select(df, one_of(cov.list$huc.ef))) * as.matrix(select(df, one_of(names(B.huc[-1]))))) +
     rowSums(as.matrix(select(df, one_of(cov.list$year.ef))) * as.matrix(select(df, one_of(names(B.year[-1])))))
@@ -66,19 +66,35 @@ predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list) {
 #' @export
 prepPredictDF <- function(data, coef.list, cov.list, var.name) {
   B <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = var.name)
-  if(var.name == "ar1") {
-    var.name <- "site"
-    data[ , var.name] <- as.factor(data[ , var.name])
-    B <- dplyr::select(B, site = site, B.ar1 = mean)
-    df <- left_join(data, B, by = var.name)
-    df[ , names(B[-1])][is.na(df[ , names(B[-1])])] <- colMeans(B[-1]) # replace NA with mean
+  if(var.name == "site" | var.name == "ar1") {
+    B$site <- as.factor(B$site)
+    featureid_site$site <- as.factor(featureid_site$site)
+    B <- dplyr::left_join(B, featureid_site, by = c("site"))
+    if(var.name == "ar1") {
+      var.name <- "site"
+      data[ , var.name] <- as.character(data[ , var.name])
+      B <- dplyr::select(B, site = site, featureid = featureid, B.ar1 = mean) # 
+      #df <- left_join(data, B, by = c("featureid"))
+      df <- merge(data, B, by = c("featureid"), all.x = T)
+      df[ , names(B[-1])][is.na(df[ , names(B[-1])])] <- colMeans(B[-1]) # replace NA with mean
+    } else {
+      #B[ , var.name] <- as.character(B[ , var.name])
+      #data[ , var.name] <- as.character(data[ , var.name])
+      #df <- left_join(data, dplyr::select(B, -site), by = c("featureid")) # merge so can apply/mutate by rows without a slow for loop
+      df <- merge(data, dplyr::select(B, -site), by = c("featureid"), all.x = T)
+      for(i in 2:length(names(B))) {
+        df[ , names(B[i])][is.na(df[ , names(B[i])])] <- colMeans(B[i])
+      }
+    }
   } else {
     B[ , var.name] <- as.character(B[ , var.name])
+    data <- as.data.frame(unclass(data))
     data[ , var.name] <- as.character(data[ , var.name])
-    df <- left_join(data, B, by = var.name) # merge so can apply/mutate by rows without a slow for loop
+    df <- merge(data, B, by = var.name, all.x = T) # merge so can apply/mutate by rows without a slow for loop - merge with dplyr causes error if no overlap in by list
     for(i in 2:length(names(B))) {
       df[ , names(B[i])][is.na(df[ , names(B[i])])] <- colMeans(B[i])
     }
+    
     #df[ , names(B[-1])][is.na(df[ , names(B[-1])])] <- colMeans(B[-1]) # replace NA with mean
   }
   return(df)
@@ -106,10 +122,12 @@ prepPredictDF <- function(data, coef.list, cov.list, var.name) {
 prepConditionalCoef <- function(coef.list, cov.list, var.name) {
   if(var.name == "ar1") {
     B <- coef.list[[paste0("B.", var.name)]]
+    B$site <- as.character(B$site)
   } else {
     f <- paste0(var.name, " ~ coef")
     B <- dcast(coef.list[[paste0("B.", var.name)]], formula = as.formula(f), value.var = "mean") # convert long to wide
     B <- dplyr::select(B, one_of(c(var.name, cov.list[[paste0(var.name, ".ef")]]))) # recorder to match for matrix multiplcation
+    if(var.name == "site" | var.name == "ar1") B$site <- as.character(B$site)
     names(B) <- c(names(B[1]), paste0(names(B[-1]), ".B.", var.name)) # rename so can differentiate coeficients from variables
   }
   
