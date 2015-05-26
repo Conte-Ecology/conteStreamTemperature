@@ -6,37 +6,15 @@
 #
 # usage: $ Rscript derive_metrics.R <input ??? json> <output temperatureData rdata> <output covariateData rdata> <output climateData rdata>
 # example: $ Rscript retrieve_db.R ./wd??? ./temperatureData.RData ./covariateData.RData ./climateData.RData
-
-library(jsonlite)
-library(dplyr)
-library(tidyr)
-library(lubridate)
-library(RPostgreSQL)
-library(ggplot2)
-
-args <- commandArgs(trailingOnly = TRUE)
-wd <- args[1]
-#if (!file.exists(csv_file)) {
-#  stop(paste0('Could not find temperatureData csv file: ', csv_file))
-#}
-output_file1 <- args[2]
-if (file.exists(output_file1)) {
-  warning(paste0('Output file 1 already exists, overwriting: ', output_file1))
-}
-output_file2 <- args[3]
-if (file.exists(output_file2)) {
-  warning(paste0('Output file 2 already exists, overwriting: ', output_file2))
-}
-output_file3 <- args[4]
-if (file.exists(output_file3)) {
-  warning(paste0('Output file 3 already exists, overwriting: ', output_file3))
-}
-
-setwd(wd)
-
-# connect to database source
-db <- src_postgres(dbname='conte_dev', host='127.0.0.1', port='5432', user='conte', password='conte')
-
+pullData <- function(connection) {
+  
+  library(jsonlite)
+  library(dplyr)
+  library(tidyr)
+  library(lubridate)
+  library(RPostgreSQL)
+  library(ggplot2)
+  
 # table references
 tbl_locations <- tbl(db, 'locations') %>%
   rename(location_id=id, location_name=name, location_description=description) %>%
@@ -167,3 +145,4 @@ climateData <- collect(climate)
 saveRDS(temperatureData, file=output_file1)
 saveRDS(covariateData, file=output_file2)
 saveRDS(climateData, file=output_file3)
+}
