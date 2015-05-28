@@ -33,6 +33,7 @@ addInteractions <- function(data) {
                   #, airTempLagged2.swe = airTempLagged2 * swe
                   , airTemp.allonnet = airTemp * allonnet
                   , airTemp.alloffnet = airTemp * alloffnet
+                  , allonnet2 = allonnet * allonnet
                   , devel_hi.prcp2.da = devel_hi * prcp2 * AreaSqKM
                   , agriculture.prcp2.da = agriculture * prcp2 * AreaSqKM
     )
