@@ -30,35 +30,35 @@ modelRegionalTempAR1 <- function(data = tempDataSyncS, cov.list, formulae = NULL
 {
   sink("code/modelRegionalTempAR1.txt")
   cat("
-    model{
+      model{
       # Likelihood
       for(i in 1:nFirstObsRows) {
-        trend[firstObsRows[i]] <- inprod(B.0[], X.0[firstObsRows[i], ]) + 
-          inprod(B.site[site[firstObsRows[i]], ], X.site[firstObsRows[i], ]) + 
-          inprod(B.huc[huc[firstObsRows[i]], ], X.site[firstObsRows[i], ]) + 
-          inprod(B.year[year[firstObsRows[i]], ], X.year[firstObsRows[i], ])
-
-        stream.mu[firstObsRows[i]] <- trend[firstObsRows[i]]
-}
-        # restart counter for each deployment
-        for(i in 1:nEvalRows) {
-          trend[evalRows[i]] <- inprod(B.0[], X.0[evalRows[i], ]) + 
-            inprod(B.site[site[evalRows[i]], ], X.site[evalRows[i], ]) + 
-            inprod(B.huc[huc[evalRows[i]], ], X.site[evalRows[i], ]) + 
-            inprod(B.year[year[evalRows[i]], ], X.year[evalRows[i], ])
-          
-          stream.mu[evalRows[i]] <- trend[evalRows[i]] + B.ar1[site[evalRows[i]]] * (temp[evalRows[i]-1] - trend[evalRows[i]-1])
-        }
+      trend[firstObsRows[i]] <- inprod(B.0[], X.0[firstObsRows[i], ]) + 
+      inprod(B.site[site[firstObsRows[i]], ], X.site[firstObsRows[i], ]) + 
+      inprod(B.huc[huc[firstObsRows[i]], ], X.site[firstObsRows[i], ]) + 
+      inprod(B.year[year[firstObsRows[i]], ], X.year[firstObsRows[i], ])
+      
+      stream.mu[firstObsRows[i]] <- trend[firstObsRows[i]]
+      }
+      # restart counter for each deployment
+      for(i in 1:nEvalRows) {
+      trend[evalRows[i]] <- inprod(B.0[], X.0[evalRows[i], ]) + 
+      inprod(B.site[site[evalRows[i]], ], X.site[evalRows[i], ]) + 
+      inprod(B.huc[huc[evalRows[i]], ], X.site[evalRows[i], ]) + 
+      inprod(B.year[year[evalRows[i]], ], X.year[evalRows[i], ])
+      
+      stream.mu[evalRows[i]] <- trend[evalRows[i]] + B.ar1[site[evalRows[i]]] * (temp[evalRows[i]-1] - trend[evalRows[i]-1])
+      }
       
       for(i in 1:n) {
-        temp[i] ~ dnorm(stream.mu[i], tau) # T(0, 50) - truncation causes MCMC problem: no mixing/movement
-        residuals[i] <- temp[i] - stream.mu[i]
+      temp[i] ~ dnorm(stream.mu[i], tau) # T(0, 50) - truncation causes MCMC problem: no mixing/movement
+      residuals[i] <- temp[i] - stream.mu[i]
       }
       
       # Prior for autoregressive
       #B.ar1 ~ dunif(-1, 1)
       for(j in 1:J){ # J sites
-        B.ar1[j] ~ dnorm(mu.ar1, tau.ar1)T(-1, 1)
+      B.ar1[j] ~ dnorm(mu.ar1, tau.ar1)T(-1, 1)
       }
       mu.ar1 ~ dunif(-1, 1)
       sigma.ar1 ~ dunif(0, 10)
@@ -69,27 +69,27 @@ modelRegionalTempAR1 <- function(data = tempDataSyncS, cov.list, formulae = NULL
       tau <- pow(sigma, -2)
       
       for(k in 1:K.0){
-        B.0[k] ~ dnorm(0, 0.0001) # priors coefs for fixed effect predictors
+      B.0[k] ~ dnorm(0, 0.0001) # priors coefs for fixed effect predictors
       }
       
       # SITE Effects
       # Independent priors on random site effects
       for(k in 1:K) {
-        sigma.b.site[k] ~ dunif(0, 100)
-        tau.b.site[k] <- 1 / (sigma.b.site[k] * sigma.b.site[k])
-        for(j in 1:J){ # J sites
-          B.site[j, k] ~ dnorm(0, tau.b.site[k])
-        }
+      sigma.b.site[k] ~ dunif(0, 100)
+      tau.b.site[k] <- 1 / (sigma.b.site[k] * sigma.b.site[k])
+      for(j in 1:J){ # J sites
+      B.site[j, k] ~ dnorm(0, tau.b.site[k])
+      }
       }
       
       # HUC Effects
       # Priors for random effects of huc
       for(m in 1:M){ # M hucs
-        B.huc[m, 1:K] ~ dmnorm(mu.huc[ ], tau.B.huc[ , ])
+      B.huc[m, 1:K] ~ dmnorm(mu.huc[ ], tau.B.huc[ , ])
       }
       mu.huc[1] <- 0 # this would not be necessary if I didn't include an overall intercept term. The only difference is whether correlation is allowed between parameters and the intercept (currently not).
       for(k in 2:K){
-        mu.huc[k] ~ dnorm(0, 0.0001)
+      mu.huc[k] ~ dnorm(0, 0.0001)
       }
       
       # Prior on multivariate normal std deviation
@@ -97,20 +97,20 @@ modelRegionalTempAR1 <- function(data = tempDataSyncS, cov.list, formulae = NULL
       df.huc <- K + 1
       sigma.B.huc[1:K, 1:K] <- inverse(tau.B.huc[ , ])
       for(k in 1:K){
-        for(k.prime in 1:K){
-          rho.B.huc[k, k.prime] <- sigma.B.huc[k, k.prime]/sqrt(sigma.B.huc[k, k]*sigma.B.huc[k.prime, k.prime])
-        }
-        sigma.b.huc[k] <- sqrt(sigma.B.huc[k, k])
+      for(k.prime in 1:K){
+      rho.B.huc[k, k.prime] <- sigma.B.huc[k, k.prime]/sqrt(sigma.B.huc[k, k]*sigma.B.huc[k.prime, k.prime])
+      }
+      sigma.b.huc[k] <- sqrt(sigma.B.huc[k, k])
       }
       
       # YEAR EFFECTS
       # Priors for random effects of year
       for(t in 1:Ti){ # Ti years
-        B.year[t, 1:L] ~ dmnorm(mu.year[ ], tau.B.year[ , ])
+      B.year[t, 1:L] ~ dmnorm(mu.year[ ], tau.B.year[ , ])
       }
       mu.year[1] <- 0
       for(l in 2:L){
-        mu.year[l] ~ dnorm(0, 0.0001)
+      mu.year[l] ~ dnorm(0, 0.0001)
       }
       
       # Prior on multivariate normal std deviation
@@ -118,15 +118,15 @@ modelRegionalTempAR1 <- function(data = tempDataSyncS, cov.list, formulae = NULL
       df.year <- L + 1
       sigma.B.year[1:L, 1:L] <- inverse(tau.B.year[ , ])
       for(l in 1:L){
-        for(l.prime in 1:L){
-          rho.B.year[l, l.prime] <- sigma.B.year[l, l.prime]/sqrt(sigma.B.year[l, l]*sigma.B.year[l.prime, l.prime])
-        }
-        sigma.b.year[l] <- sqrt(sigma.B.year[l, l])
+      for(l.prime in 1:L){
+      rho.B.year[l, l.prime] <- sigma.B.year[l, l.prime]/sqrt(sigma.B.year[l, l]*sigma.B.year[l.prime, l.prime])
+      }
+      sigma.b.year[l] <- sqrt(sigma.B.year[l, l])
       }
       
       # Derived parameters
-
-    }
+      
+      }
       ",fill = TRUE)
   sink()
 } # sink needs to be wrapped in expression for knitr to work
@@ -144,12 +144,14 @@ K.0 <- length(variables.fixed)
 # Random site effects
 X.site <- data.cal$data.random.sites
 variables.site <- names(X.site)
-J <- length(unique(data$site))
+sites <- as.factor(as.integer(as.character(data$site)))
+J <- length(unique(sites))
 K <- length(variables.site)
 n <- dim(data)[1]
 W.site <- diag(K)
 
-M <- length(unique(data$HUC8))
+hucs <- as.factor(as.integer(as.character(data$HUC8)))
+M <- length(unique(hucs))
 W.huc <- diag(K)
 
 # Random Year effects
@@ -177,9 +179,10 @@ data.list <- list(n = n,
                   nFirstObsRows = length(firstObsRows),
                   X.site = as.matrix(X.site), # X.site, #
                   X.year = as.matrix(X.year),
-                  site = as.factor(data$site),
-                  huc = as.factor(data$HUC8),
-                  year = as.factor(data$year))
+                  site = sites,
+                  huc = hucs,
+                  year = as.factor(as.integer(as.character(data$year)))
+)
 
 inits <- function(){
   list(#B.raw = array(rnorm(J*K), c(J,K)), 
@@ -195,7 +198,7 @@ if(class(param.list) == "character") {
               "B.ar1",
               "B.0",
               "B.site",
-              "rho.B.site",
+              #"rho.B.site",
               # "mu.site",
               "sigma.b.site",
               "B.huc",
