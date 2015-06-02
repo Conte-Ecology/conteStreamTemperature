@@ -76,7 +76,7 @@ prepPredictDF <- function(data, coef.list, cov.list, var.name) {
       B <- dplyr::select(B, site = site, featureid = featureid, B.ar1 = mean) # 
       #df <- left_join(data, B, by = c("featureid"))
       df <- merge(data, B, by = c("featureid"), all.x = T)
-      df[ , names(B[-1])][is.na(df[ , names(B[-1])])] <- colMeans(B[-1]) # replace NA with mean
+      df[ , names(B[-1])][is.na(df[ , names(B[-1])])] <- colMeans(dplyr::select(B, B.ar1)) # replace NA with mean
     } else {
       #B[ , var.name] <- as.character(B[ , var.name])
       #data[ , var.name] <- as.character(data[ , var.name])

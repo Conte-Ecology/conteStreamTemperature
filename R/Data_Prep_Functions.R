@@ -24,6 +24,8 @@ addInteractions <- function(data) {
                   , airTemp.prcp2.da = airTemp * prcp2 * AreaSqKM
                   , airTemp.prcp2.da.forest = airTemp * prcp2 * AreaSqKM * forest # change to riparian forest
                   , airTemp.prcp30.da = airTemp * prcp30 * AreaSqKM
+                  , airTemp.agriculture = airTemp * agriculture
+                  , airTemp.devel_hi = airTemp * devel_hi
                   , temp7p.forest = temp7p * forest
                   , temp7p.prcp7.da = temp7p * prcp7 * AreaSqKM
                   , temp7p.forest.prcp7.da = temp7p * forest * prcp7 * AreaSqKM
@@ -33,6 +35,8 @@ addInteractions <- function(data) {
                   #, airTempLagged2.swe = airTempLagged2 * swe
                   , airTemp.allonnet = airTemp * allonnet
                   , airTemp.alloffnet = airTemp * alloffnet
+                  , allonnet2 = allonnet * allonnet
+                  , airTemp.allonnet2 = airTemp * allonnet *allonnet
                   , devel_hi.prcp2.da = devel_hi * prcp2 * AreaSqKM
                   , agriculture.prcp2.da = agriculture * prcp2 * AreaSqKM
     )

@@ -233,8 +233,22 @@ if(nc) {
 #write.model(temp.model, filename)
 
 if(runParallel) {
-  if(coda) {
-    CL <- makeCluster(nc)
+  if(coda) { # run in parallel and use coda output
+    switch(Sys.info()[['sysname']],
+           Windows = {
+             print("I'm sorry, I'm a Windows PC. I will run in parallel using makeSockCluster.")
+             cluster_type = "PSOCK"
+           },
+           Linux  = {
+             print("I'm a penguin. I will efficiently run in parallel using makeForkCluster.")
+             cluster_type = "FORK"
+             },
+           Darwin = {
+             print("I'm a Mac, lucky you. I will efficiently run in parallel using makeForkCluster.")
+             cluster_type = "FORK"
+             }
+           )
+    CL <- makeCluster(nc, type = cluster_type)
     clusterExport(cl=CL, list("data.list", "inits", "params", "K", "J", "Ti", "L", "n", "W.site", "W.huc", "M", "W.year", "X.site", "X.year", "n.burn", "n.it", "n.thin"), envir = environment())
     clusterSetRNGStream(cl=CL, iseed = 2345642)
     
@@ -251,8 +265,22 @@ if(runParallel) {
     stopCluster(CL)
     return(M3)
     
-  } else {
-    CL <- makeCluster(nc)
+  } else { # run in parallel but use rjags output
+    switch(Sys.info()[['sysname']],
+           Windows = {
+             print("I'm sorry, I'm a Windows PC. I will run in parallel using makeSockCluster.")
+             cluster_type = "PSOCK"
+           },
+           Linux  = {
+             print("I'm a penguin. I will efficiently run in parallel using makeForkCluster.")
+             cluster_type = "FORK"
+           },
+           Darwin = {
+             print("I'm a Mac, lucky you. I will efficiently run in parallel using makeForkCluster.")
+             cluster_type = "FORK"
+           }
+    )
+    CL <- makeCluster(nc, type = cluster_type)
     clusterExport(cl=CL, list("data.list", "inits", "params", "K", "J", "Ti", "L", "n", "W.site", "W.huc", "M", "W.year", "X.site", "X.year", "n.burn", "n.it", "n.thin"), envir = environment())
     clusterSetRNGStream(cl=CL, iseed = 2345642)
     
@@ -269,7 +297,7 @@ if(runParallel) {
   }
   
   
-} else {
+} else { # if don't want to run in parallel
   if(coda) {
     library(rjags)
     load.module('glm')

@@ -74,9 +74,8 @@ plotRawTemperatureData <- function(masterData, plotDirectory){
     gOut <- arrangeGrob( gAirWater, gTimeSeries, ncol=1, main = paste0( 'Site: ', sites[j]))
     
     # Save the plots
-    setwd(plotDirectory)
     
-    ggsave(plot=gOut, file=paste0(sites[j],'.png'),dpi=300,width=6,height=8, units='in', scale=2)
+    ggsave(plot=gOut, file=paste0(plotDirectory, "/", sites[j],'.png'),dpi=300,width=6,height=8, units='in', scale=2)
   }
   
 }
