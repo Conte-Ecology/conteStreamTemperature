@@ -64,7 +64,7 @@ predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list) {
 #' 
 #' }
 #' @export
-prepPredictDF <- function(data, coef.list, cov.list, var.name) {
+prepPredictDF <- function(data, coef.list, cov.list, var.name, featureid_site) {
   B <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = var.name)
   if(var.name == "site" | var.name == "ar1") {
     B$site <- as.factor(B$site)
