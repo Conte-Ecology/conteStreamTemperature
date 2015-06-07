@@ -2,7 +2,7 @@
 
 #----------Add column denoting frequency of observations------------------------
 
-#' @param data time series data pull from the postgres database (df_values table)
+# @param data time series data pull from the postgres database (df_values table)
 
 obs_freq <- function(data) {
   obs_per_day <- data %>%
