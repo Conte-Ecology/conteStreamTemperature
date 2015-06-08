@@ -11,6 +11,8 @@ prepPredictDF(data, coef.list, cov.list, var.name, featureid_site)
 \item{coef.list}{List of coefficient values estimated from the model}
 
 \item{cov.list}{List of covariates used in the model}
+
+\item{featureid_site}{dataframe with featureid and site as 2 columns}
 }
 \value{
 Returns Dataframe of covariates, coefficients from a fitted model, and observed temperature when available

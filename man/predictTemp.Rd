@@ -3,7 +3,8 @@
 \alias{predictTemp}
 \title{predictTemp: Predict conditional daily temperatures for observed or unobserved sites}
 \usage{
-predictTemp(data, data.fit = tempDataSyncS, coef.list, cov.list)
+predictTemp(data, data.fit = tempDataSyncS, coef.list, cov.list,
+  featureid_site)
 }
 \arguments{
 \item{data}{Data frame of covariates for prediction}
@@ -13,6 +14,8 @@ predictTemp(data, data.fit = tempDataSyncS, coef.list, cov.list)
 \item{coef.list}{List of coefficient values estimated from the model}
 
 \item{cov.list}{List of covariates used in the model}
+
+\item{featureid_site}{dataframe with featureid and sites linked}
 }
 \value{
 Numeric vector of predicted daily stream temperatures
@@ -25,7 +28,7 @@ The predictions are all conditional on site, HUC8, and year when the data is ava
 }
 \examples{
 \dontrun{
-Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, cov.list = cov.list, coef.list = coef.list))
+Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, cov.list = cov.list, coef.list = coef.list, featureid_site = featureid_site))
 }
 }
 
