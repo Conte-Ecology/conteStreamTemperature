@@ -7,13 +7,14 @@
 #' @param data.fit Data frame used for fitting (calibrating) the JAGS model
 #' @param cov.list List of covariates used in the model
 #' @param coef.list List of coefficient values estimated from the model
+#' @param featureid_site dataframe with featureid and sites linked
 #' @return Numeric vector of predicted daily stream temperatures
 #' @details
 #' The predictions are all conditional on site, HUC8, and year when the data is available and predicts the mean values when any component was not used in the fitting (not in the calibration dataset)
 #' @examples
 #' 
 #' \dontrun{
-#' Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, cov.list = cov.list, coef.list = coef.list))
+#' Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, cov.list = cov.list, coef.list = coef.list, featureid_site = featureid_site))
 #' }
 #' @export
 predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list, featureid_site) {
@@ -53,6 +54,7 @@ predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list, fea
 #' @param data Dataframe for which predictions will be calculated
 #' @param cov.list List of covariates used in the model
 #' @param coef.list List of coefficient values estimated from the model
+#' @param featureid_site dataframe with featureid and site as 2 columns
 #' 
 #' @return Returns Dataframe of covariates, coefficients from a fitted model, and observed temperature when available
 #' @details
