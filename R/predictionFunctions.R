@@ -16,17 +16,17 @@
 #' Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, cov.list = cov.list, coef.list = coef.list))
 #' }
 #' @export
-predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list) {
+predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list, featureid_site) {
   
   B.site <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = "site")
   B.huc <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = "huc")
   B.year <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = "year")
   B.ar1 <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = "ar1")
   
-  df <- prepPredictDF(data = data, coef.list = coef.list, cov.list = cov.list, var.name = "site")
-  df <- prepPredictDF(data = df, coef.list = coef.list, cov.list = cov.list, var.name = "huc")
-  df <- prepPredictDF(data = df, coef.list = coef.list, cov.list = cov.list, var.name = "year")
-  df <- prepPredictDF(data = df, coef.list = coef.list, cov.list = cov.list, var.name = "ar1")
+  df <- prepPredictDF(data = data, coef.list = coef.list, cov.list = cov.list, var.name = "site", featureid_site = featureid_site)
+  df <- prepPredictDF(data = df, coef.list = coef.list, cov.list = cov.list, var.name = "huc", featureid_site = featureid_site)
+  df <- prepPredictDF(data = df, coef.list = coef.list, cov.list = cov.list, var.name = "year", featureid_site = featureid_site)
+  df <- prepPredictDF(data = df, coef.list = coef.list, cov.list = cov.list, var.name = "ar1", featureid_site = featureid_site)
   
   
   df$trend <- NA
