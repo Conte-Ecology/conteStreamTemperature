@@ -16,7 +16,7 @@ calcYearsMaxTemp(grouped.df, derived.df, temp.threshold, summer = FALSE)
 Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
 }
 \description{
-\code{calcYearsMaxTemp} Calculate derived metrics from predicted stream temperatures
+\code{calcYearsMaxTemp} Calculates the number of years and frequency of years that a stream ever (even for 1 day) exceeds a threshold temperature
 }
 \details{
 blah, blah, blah, something, something

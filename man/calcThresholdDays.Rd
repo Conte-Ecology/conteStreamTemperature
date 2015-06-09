@@ -16,7 +16,7 @@ calcThresholdDays(grouped.df, derived.df, temp.threshold, summer = FALSE)
 Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
 }
 \description{
-\code{calcThresholdDays} Calculate derived metrics from predicted stream temperatures
+\code{calcThresholdDays} Calculates the median number of days per year that a stream is predicted to exceed a threshold temperature
 }
 \details{
 blah, blah, blah, something, something

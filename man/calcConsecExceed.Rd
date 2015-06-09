@@ -3,12 +3,14 @@
 \alias{calcConsecExceed}
 \title{calcConsecExceed}
 \usage{
-calcConsecExceed(grouped.df, derived, df, threshold)
+calcConsecExceed(grouped.df, derived, df, threshold, summer = FALSE)
 }
 \arguments{
 \item{grouped.df}{Dataframe grouped by featureid then year}
 
 \item{threshold}{Temperature threshold above which causes physiological problems for species of interest}
+
+\item{summer}{Logical calculate metric just for June-August. Default FALSE}
 
 \item{derived.df}{Dataframe of derived metrics}
 }

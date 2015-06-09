@@ -1,9 +1,18 @@
-
-
-#----------Add column denoting frequency of observations------------------------
-
-# @param data time series data pull from the postgres database (df_values table)
-
+#' @title obs_freq
+#'
+#' @description
+#' \code{obs_freq} Median observations per day for each time series
+#'
+#' @param data time series data pull from the postgres database (df_values table)
+#' @return Median observations per day for each time series
+#' @details
+#' blah, blah, blah, something, something
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
 obs_freq <- function(data) {
   obs_per_day <- data %>%
     dplyr::group_by(series_id, date) %>%
@@ -23,11 +32,22 @@ obs_freq <- function(data) {
   return(data)
 }
 
-#----------Uniformity of records within a day-----------------------------------
 
-# check to make sure datetime was done correctly when guessing 12-hr vs 24-hr formats
-
-# flag inconsistent time intervals within a day at a given location or series (deployment?)
+#' @title flag_interval
+#'
+#' @description
+#' \code{flag_interval} Uniformity of records within a day
+#'
+#' @param data time series data pull from the postgres database (df_values table)
+#' @return flag inconsistent time intervals within a day at a given location or series (logger deployment)
+#' @details
+#' check to make sure datetime was done correctly when guessing 12-hr vs 24-hr formats
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
 flag_interval <- function(data) {
   if(!("median_freq" %in% colnames(data))) {
     data <- obs_freq(data)
@@ -49,20 +69,22 @@ flag_interval <- function(data) {
   return(data)
 }
 
-#---------Check for duplicates: not necessary while things are being averaged----
 
-#n_occur <- data.frame(table(temperatureData$site_date))
-#n_occur[n_occur$Freq > 1, ]
-#temperatureData[temperatureData$site_date %in% n_occur$Var1[n_occur$Freq > 1], ]
-
-#temperatureData[temperatureData$site_date == "736_2007-08-01", ]
-
-
-
-#----------Flag incomplete days--------------
-
-# Flag days with less than 90% of median number of observations for that series
-
+#' @title flag_incomplete
+#'
+#' @description
+#' \code{flag_incomplete} Flag incomplete days
+#'
+#' @param data time series data pull from the postgres database (df_values table)
+#' @return Flag days with less than 90% of median number of observations for that series
+#' @details
+#' blah, blah, blah, something, something
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
 flag_incomplete <- function(data) {
   if(!("median_freq" %in% colnames(data))) {
     data <- obs_freq(data)
@@ -72,8 +94,23 @@ flag_incomplete <- function(data) {
   return(data)
 }
 
-#----------Check for out of water (out of water vs. dry stream?)---------------- 
-# Rate of change in temperature per hour
+
+#' @title flag_hourly_rise
+#'
+#' @description
+#' \code{flag_hourly_rise} Check for out of water (out of water vs. dry stream?)
+#'
+#' @param data time series data pull from the postgres database (df_values table)
+#' @param deg Threshold change in degrees for flag
+#' @return Flag days with Rate of change in temperature per hour above deg
+#' @details
+#' Rate of change in temperature per hour
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
 flag_hourly_rise <- function(data, deg = 5) {
   if(!("median_freq" %in% colnames(data))) {
     data <- obs_freq(data)
@@ -94,7 +131,22 @@ flag_hourly_rise <- function(data, deg = 5) {
 }
 
 
-# Rate of change in mean temperature per day
+#' @title flag_daily_rise
+#'
+#' @description
+#' \code{flag_daily_rise} Check for out of water (out of water vs. dry stream?)
+#'
+#' @param data time series data pull from the postgres database (df_values table)
+#' @param deg Threshold change in degrees for flag
+#' @return Flag days with Rate of change in temperature per day above deg
+#' @details
+#' Rate of change in temperature per day
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
 flag_daily_rise <- function(data, deg = 5) {
   data <- ungroup(data)
   data$row <- 1:nrow(data)
@@ -110,9 +162,21 @@ flag_daily_rise <- function(data, deg = 5) {
   return(data)
 }
 
-#----------Check for excessively cold events------------------------------------
-
-# Convert -1 - 0 C readings to 0
+#' @title convert_neg
+#'
+#' @description
+#' \code{convert_neg} Check for excessively cold events
+#'
+#' @param data time series data pull from the postgres database (df_values table)
+#' @return temp Convert -1 - 0 C readings to 0
+#' @details
+#' Convert -1 - 0 C readings to 0
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
 convert_neg <- function(data) {
   if(!("median_freq" %in% colnames(data))) {
     data <- obs_freq(data)
@@ -123,8 +187,22 @@ convert_neg <- function(data) {
   return(data)
 }
 
-# Flagging observations < -1 C makes sense.  
 
+#' @title flag_cold_obs
+#'
+#' @description
+#' \code{flag_cold_obs} Flagging observations < -1 C
+#'
+#' @param data time series data pull from the postgres database (df_values table)
+#' @return Flagging observations < -1 C
+#' @details
+#' Flagging observations < -1 C
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
 flag_cold_obs <- function(data) {
   if(!("median_freq" %in% colnames(data))) {
     data <- obs_freq(data)
@@ -135,6 +213,21 @@ flag_cold_obs <- function(data) {
   return(data)
 }
 
+#' @title flag_cold_days
+#'
+#' @description
+#' \code{flag_cold_days} Flagging days < -1 C
+#'
+#' @param data time series data pull from the postgres database (df_values table)
+#' @return Flagging days < -1 C
+#' @details
+#' Flagging days < -1 C
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
 flag_cold_days <- function(data) {
   if(!("median_freq" %in% colnames(data))) {
     data <- obs_freq(data)
@@ -145,9 +238,23 @@ flag_cold_days <- function(data) {
   return(data)
 }
 
-#---------Check for excessively hot readings------------------------------------
-# Flagging observations > 30 C might not work for the database, as it isn't all small trout streams.
 
+#' @title flag_hot_obs
+#'
+#' @description
+#' \code{flag_hot_obs} Flagging hot observations
+#'
+#' @param data time series data pull from the postgres database (df_values table)
+#' @param threshold Temperature threshold to flag. Default = 35
+#' @return logical Flag for hot observations
+#' @details
+#' Flagging observations > 30 C might not work for the database, as it isn't all small trout streams.
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
 flag_hot_obs <- function(data, threshold = 35) {
   if(!("median_freq" %in% colnames(data))) {
     data <- obs_freq(data)
@@ -158,6 +265,22 @@ flag_hot_obs <- function(data, threshold = 35) {
   return(data)
 }
 
+#' @title flag_hot_days
+#'
+#' @description
+#' \code{flag_hot_days} Flagging hot days
+#'
+#' @param data time series data pull from the postgres database (df_values table)
+#' @param threshold Temperature threshold to flag. Default = 35
+#' @return logical Flag for hot days
+#' @details
+#' Flagging observations > 30 C might not work for the database, as it isn't all small trout streams.
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
 flag_hot_days <- function(data, threshold = 35) {
   if(!("median_freq" %in% colnames(data, threshold))) {
     data <- obs_freq(data)
@@ -168,9 +291,24 @@ flag_hot_days <- function(data, threshold = 35) {
   return(data)
 }
 
-#---------Flagging extremes-----------------------------------------------------
-# Flagging upper and lower 5th percentiles probably wont work for the database, as those are best reverified by whoever collected/uploaded the data.
 
+#' @title flag_extreme_obs
+#'
+#' @description
+#' \code{flag_extreme_obs} Flagging extreme observations
+#'
+#' @param data time series data pull from the postgres database (df_values table)
+#' @param qlo Lower quantile to flag. Default = 0.001
+#' @param qhi Upper quantile to flag. Default = 0.999
+#' @return logical Flag for extreme observations
+#' @details
+#' Flagging upper and lower 5th percentiles probably wont work for the database, as those are best reverified by whoever collected/uploaded the data.
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
 flag_extreme_obs <- function(data, qlo = 0.001, qhi = 0.999) {
   if(!("median_freq" %in% colnames(data))) {
     data <- obs_freq(data)
@@ -182,6 +320,23 @@ flag_extreme_obs <- function(data, qlo = 0.001, qhi = 0.999) {
 }
 
 
+#' @title flag_extreme_days
+#'
+#' @description
+#' \code{flag_extreme_days} Flagging extreme days
+#'
+#' @param data time series data pull from the postgres database (df_values table)
+#' @param qlo Lower quantile to flag. Default = 0.001
+#' @param qhi Upper quantile to flag. Default = 0.999
+#' @return logical Flag for extreme days
+#' @details
+#' Flagging upper and lower 5th percentiles probably wont work for the database, as those are best reverified by whoever collected/uploaded the data.
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
 flag_extreme_days <- function(data, qlo = 0.001, qhi = 0.999) {
   if(!("median_freq" %in% colnames(data))) {
     data <- obs_freq(data)
@@ -191,10 +346,4 @@ flag_extreme_days <- function(data, qlo = 0.001, qhi = 0.999) {
   
   return(data)
 }
-
-
-
-
-
-
 
