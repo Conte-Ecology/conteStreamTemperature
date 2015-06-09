@@ -4,9 +4,8 @@
 \title{derive_metrics_par}
 \usage{
 derive_metrics_par(i, chunk.size = 50, catchmentid, springFallBPs,
-  tempDataSync, df_covariates_upstream, featureid_huc8,
-  featureid_site = featureid_site, featureid_lat_lon, coef.list, cov.list,
-  var.names)
+  tempDataSync, df_covariates_upstream, featureid_huc8, featureid_site,
+  featureid_lat_lon, coef.list, cov.list, var.names)
 }
 \arguments{
 \item{i}{Iteration passed from foreach loop}
@@ -23,6 +22,8 @@ derive_metrics_par(i, chunk.size = 50, catchmentid, springFallBPs,
 
 \item{featureid_huc8}{}
 
+\item{featureid_site}{}
+
 \item{featureid_lat_lon}{}
 
 \item{coef.list}{}
@@ -30,8 +31,6 @@ derive_metrics_par(i, chunk.size = 50, catchmentid, springFallBPs,
 \item{cov.list}{}
 
 \item{var.names}{}
-
-\item{featureid_site=featureid_site}{}
 }
 \value{
 Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
