@@ -1,7 +1,158 @@
+#' @title derive_metrics_par
+#'
+#' @description
+#' \code{derive_metrics_par} Wrapper to pull data from database, prepare data, and calculate derived metrics in parallel using foreach %dopar%
+#'
+#' @param i Iteration passed from foreach loop
+#' @param chunk.size Number of catchments to process at 1 time, default = 50 based on testing speed with pulling from the database and memory issues
+#' @param catchmentid
+#' @param springFallBPs
+#' @param tempDataSync
+#' @param df_covariates_upstream
+#' @param featureid_huc8
+#' @param featureid_site
+#' @param featureid_lat_lon
+#' @param coef.list
+#' @param cov.list
+#' @param var.names
+#' 
+#' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
+#' @details
+#' blah, blah, blah, something, something
+#' 
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
+derive_metrics_par <- function(i, chunk.size = 50, catchmentid, springFallBPs, tempDataSync, df_covariates_upstream, featureid_huc8, featureid_site, featureid_lat_lon, coef.list, cov.list, var.names) {
+  
+  n.catches <- length(catchmentid)
+  k <- i*chunk.size
+  if(k <= n.catches) {
+    catches <- catchmentid[(1+(i-1)*chunk.size):k]
+  } else {
+    catches <- catchmentid[(1+(i-1)*chunk.size):n.catches]
+  }
+  catches_string <- paste(catches, collapse = ', ')
+  
+  # reconnect to database if lost
+  if(isPostgresqlIdCurrent(con) == FALSE) {
+    drv <- dbDriver("PostgreSQL")
+    con <- dbConnect(drv, dbname='sheds', host='ecosheds.org', user=options('SHEDS_USERNAME'), password=options('SHEDS_PASSWORD'))
+  }
+  
+  # pull daymet records
+  qry_daymet <- paste0("SELECT featureid, date, tmax, tmin, prcp, dayl, srad, vp, swe, (tmax + tmin) / 2.0 AS airTemp FROM daymet WHERE featureid IN (", catches_string, ") ;")
+  
+  rs <- dbSendQuery(con, statement = qry_daymet)
+  climateData <- fetch(rs, n=-1)
+  
+  
+  mean.spring.bp <- mean(dplyr::filter(springFallBPs, finalSpringBP != "Inf")$finalSpringBP, na.rm = T)
+  mean.fall.bp <- mean(dplyr::filter(springFallBPs, finalFallBP != "Inf")$finalFallBP, na.rm = T)
+  
+  foo <- springFallBPs %>%
+    dplyr::mutate(site = as.character(site),
+                  featureid = as.integer(site),
+                  finalSpringBP = ifelse(finalSpringBP == "Inf" | is.na(finalSpringBP), mean.spring.bp, finalSpringBP),
+                  finalFallBP = ifelse(finalFallBP == "Inf" | is.na(finalFallBP), mean.fall.bp, finalFallBP))
+  
+  fullDataSync <- climateData %>%
+    left_join(df_covariates_upstream, by=c('featureid')) %>%
+    left_join(dplyr::select(tempDataSync, date, featureid, site, temp), by = c('date', 'featureid')) %>%
+    left_join(featureid_huc8, by = c('featureid')) %>%
+    left_join(featureid_lat_lon, by = c('featureid')) %>%
+    dplyr::mutate(year = as.numeric(format(date, "%Y")),
+                  airTemp = (tmax + tmin)/2) %>%
+    left_join(dplyr::select(foo, -site), by = c('featureid', 'year')) %>%
+    dplyr::mutate(dOY = yday(date)) %>%
+    #dplyr::mutate(huc = huc8) %>%
+    dplyr::filter(dOY >= finalSpringBP & dOY <= finalFallBP | is.na(finalSpringBP) | is.na(finalFallBP & finalSpringBP != "Inf" & finalFallBP != "Inf")) %>%
+    dplyr::filter(dOY >= mean.spring.bp & dOY <= mean.fall.bp) %>%
+    dplyr::filter(AreaSqKM < 400)
+  
+  # Order by group and date
+  fullDataSync <- fullDataSync[order(fullDataSync$featureid, fullDataSync$year, fullDataSync$dOY),]
+  
+  # For checking the order of fullDataSync
+  fullDataSync$count <- 1:length(fullDataSync$year)
+  
+  fullDataSync <- fullDataSync[order(fullDataSync$count),] # just to make sure fullDataSync is ordered for the slide function
+  
+  # moving means instead of lagged terms in the future
+  fullDataSync <- fullDataSync %>%
+    group_by(featureid, year) %>%
+    arrange(featureid, year, dOY) %>%
+    mutate(airTempLagged1 = lag(airTemp, n = 1, fill = NA),
+           temp5p = rollapply(data = airTempLagged1, 
+                              width = 5, 
+                              FUN = mean, 
+                              align = "right", 
+                              fill = NA, 
+                              na.rm = T),
+           temp7p = rollapply(data = airTempLagged1, 
+                              width = 7, 
+                              FUN = mean, 
+                              align = "right", 
+                              fill = NA, 
+                              na.rm = T),
+           prcp2 = rollsum(x = prcp, 2, align = "right", fill = NA),
+           prcp7 = rollsum(x = prcp, 7, align = "right", fill = NA),
+           prcp30 = rollsum(x = prcp, 30, align = "right", fill = NA))
+  
+  var.names <- c("airTemp", 
+                 "temp7p",
+                 "prcp", 
+                 "prcp2",
+                 "prcp7",
+                 "prcp30",
+                 "dOY", 
+                 "forest", 
+                 "herbaceous", 
+                 "agriculture", 
+                 "devel_hi", 
+                 "developed",
+                 "AreaSqKM",  
+                 "allonnet",
+                 "alloffnet",
+                 "surfcoarse", 
+                 "srad", 
+                 "dayl", 
+                 "swe")
+  
+  fullDataSync <- fullDataSync %>%
+    mutate(HUC8 = as.character(HUC8),
+           huc8 = as.character(HUC8),
+           site = as.numeric(as.factor(featureid))) 
+  
+  fullDataSyncS <- stdCovs(x = fullDataSync, y = tempDataSync, var.names = var.names)
+  
+  fullDataSyncS <- addInteractions(fullDataSyncS)
+  
+  fullDataSyncS <- indexDeployments(fullDataSyncS, regional = TRUE)
+  
+  fullDataSyncS <- predictTemp(data = fullDataSyncS, coef.list = coef.list, cov.list = cov.list, featureid_site = featureid_site)
+  
+  fullDataSync <- left_join(fullDataSync, select(fullDataSyncS, featureid, date, tempPredicted), by = c("featureid", "date"))
+  
+  mean.pred <- mean(fullDataSync$tempPredicted, na.rm = T)
+  
+  if(mean.pred == "NaN") {
+    cat(paste0(i, " of ", n.loops, " loops has no predicted temperatures"))
+  } 
+  derived.site.metrics <- deriveMetrics(fullDataSync)
+  
+  return(derived.site.metrics)
+}
+
+
+
 #' @title calcThresholdDays
 #'
 #' @description
-#' \code{calcThresholdDays} Calculate derived metrics from predicted stream temperatures
+#' \code{calcThresholdDays} Calculates the median number of days per year that a stream is predicted to exceed a threshold temperature
 #'
 #' @param grouped.df Dataframe grouped by featureid then year
 #' @param derived.df Dataframe of derived metrics
@@ -53,7 +204,7 @@ calcThresholdDays <- function(grouped.df, derived.df, temp.threshold, summer = F
 #' @title calcYearsMaxTemp
 #'
 #' @description
-#' \code{calcYearsMaxTemp} Calculate derived metrics from predicted stream temperatures
+#' \code{calcYearsMaxTemp} Calculates the number of years and frequency of years that a stream ever (even for 1 day) exceeds a threshold temperature
 #'
 #' @param grouped.df Dataframe grouped by featureid then year
 #' @param derived.df Dataframe of derived metrics
@@ -118,6 +269,7 @@ calcYearsMaxTemp <- function(grouped.df, derived.df, temp.threshold, summer = FA
 #' @param grouped.df Dataframe grouped by featureid then year
 #' @param derived.df Dataframe of derived metrics
 #' @param threshold  Temperature threshold above which causes physiological problems for species of interest
+#' @param summer Logical calculate metric just for June-August. Default FALSE
 #' 
 #' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
 #' @details
@@ -129,14 +281,32 @@ calcYearsMaxTemp <- function(grouped.df, derived.df, temp.threshold, summer = FA
 #' 
 #' }
 #' @export
-calcConsecExceed <- function(grouped.df, derived,df, threshold) {
+calcConsecExceed <- function(grouped.df, derived,df, threshold, summer = FALSE) {
   
-  derived.df <- dplyr::left_join(derived.df, yearsMaxTemp, by = "featureid")
+  if(summer) {
+    consecExceed <- grouped.df %>%
+      dplyr::mutate(month = as.numeric(format(date, "%m"))) %>%
+      dplyr::filter(month >= 6 & month <= 8) %>%
+      dplyr::mutate(exceed = ifelse(tempPredicted > temp.threshold, 1, 0),
+                    lag_exceed = lag(exceed, n = 1),
+                    #sum_exceed = exceed + lag_exceed,
+                    event_start = ifelse(exceed == 1 & lag_exceed != 1, 1, 0)) %>%#,
+                    #event_day = if(lag_exceed > 0, event_day[i-1]+1, exceed)
+                   # event = if(exceed == 1 & lag_exceed == 1, "name", NA)  # don't know how to name this without a for loop through 1.8 billion records
+      # dplyr::group_by(event)
+      
+      # easy to calculate the number of events but not the duration without resorting to a for loop or using LOTS of lag columns
+      dplyr::summarise(nExceedEvents = sum(event_start)) %>%
+      dplyr::summarise(nExceedEventsMean = mean(nExceed))
+  }
   
-  rm(yearsMaxTemp)
+  derived.df <- dplyr::left_join(derived.df, consecExceed, by = "featureid")
+  
+  rm(consecExceed)
   
   return(derived.df)
 }
+
 
 #' @title calc7DADM
 #'
@@ -158,8 +328,7 @@ calcConsecExceed <- function(grouped.df, derived,df, threshold) {
 #' }
 #' @export
 calc7DADM <- function(grouped.df, derived.df, threshold) {
-  
-  
+
   pct7DADM <- grouped.df %>%
     dplyr::mutate(month = as.numeric(format(date, "%m"))) %>%
     
