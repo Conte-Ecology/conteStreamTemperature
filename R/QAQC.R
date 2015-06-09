@@ -342,7 +342,7 @@ flag_extreme_days <- function(data, qlo = 0.001, qhi = 0.999) {
     data <- obs_freq(data)
   }
   data <- data %>%
-    mutate(flag_extremes = ifelse(temp > quantile(temp, c(qhi), na.rm = T) | temp < quantile(temp, c(qlo) & median_freq == 1, na.rm = T), FALSE, TRUE))
+    mutate(flag_extreme_days = ifelse(temp > quantile(temp, c(qhi), na.rm = T) | temp < quantile(temp, c(qlo) & median_freq == 1, na.rm = T), FALSE, TRUE))
   
   return(data)
 }
