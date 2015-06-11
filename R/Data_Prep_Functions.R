@@ -31,7 +31,7 @@ addInteractions <- function(data) {
                   , temp7p.forest.prcp7.da = temp7p * forest * prcp7 * AreaSqKM
                   , srad.forest = srad * forest # change to riparian forest?
                   , airTemp.swe = airTemp * swe
-                  , airTempLagged1.swe = airTempLagged1 * swe
+                  #, airTempLagged1.swe = airTempLagged1 * swe
                   #, airTempLagged2.swe = airTempLagged2 * swe
                   , airTemp.allonnet = airTemp * allonnet
                   , airTemp.alloffnet = airTemp * alloffnet
