@@ -10,7 +10,7 @@
 #' @param tempDataSync
 #' @param df_covariates_upstream
 #' @param featureid_huc8
-#' @param featureid_site
+#' @param featureid_site=featureid_site
 #' @param featureid_lat_lon
 #' @param coef.list
 #' @param cov.list
@@ -26,7 +26,7 @@
 #' 
 #' }
 #' @export
-derive_metrics_par <- function(i, chunk.size = 50, catchmentid, springFallBPs, tempDataSync, df_covariates_upstream, featureid_huc8, featureid_site, featureid_lat_lon, coef.list, cov.list, var.names) {
+derive_metrics_par <- function(i, chunk.size = 50, catchmentid, springFallBPs, tempDataSync, df_covariates_upstream, featureid_huc8, featureid_site, featureid_lat_lon, coef.list, cov.list, var.names, con) {
   
   n.catches <- length(catchmentid)
   k <- i*chunk.size
@@ -38,10 +38,10 @@ derive_metrics_par <- function(i, chunk.size = 50, catchmentid, springFallBPs, t
   catches_string <- paste(catches, collapse = ', ')
   
   # reconnect to database if lost
-  if(isPostgresqlIdCurrent(con) == FALSE) {
-    drv <- dbDriver("PostgreSQL")
-    con <- dbConnect(drv, dbname='sheds', host='ecosheds.org', user=options('SHEDS_USERNAME'), password=options('SHEDS_PASSWORD'))
-  }
+  #   if(isPostgresqlIdCurrent(con) == FALSE) {
+  #     drv <- dbDriver("PostgreSQL")
+  #     con <- dbConnect(drv, dbname='sheds', host='ecosheds.org', user=options('SHEDS_USERNAME'), password=options('SHEDS_PASSWORD'))
+  #   }
   
   # pull daymet records
   qry_daymet <- paste0("SELECT featureid, date, tmax, tmin, prcp, dayl, srad, vp, swe, (tmax + tmin) / 2.0 AS airTemp FROM daymet WHERE featureid IN (", catches_string, ") ;")
@@ -146,6 +146,7 @@ derive_metrics_par <- function(i, chunk.size = 50, catchmentid, springFallBPs, t
   
   return(derived.site.metrics)
 }
+
 
 
 
@@ -281,6 +282,26 @@ calcYearsMaxTemp <- function(grouped.df, derived.df, temp.threshold, summer = FA
 #' 
 #' }
 #' @export
+calcConsecExceed <- function(y, threshold = 22) {
+  if(all(is.na(y$tempPredicted))) {
+    warning("all values are NA")
+    maxConsec <- NA
+    meanConsec <- NA
+  } else if(all(y$tempPredicted <= threshold)) {
+    maxConsec <- 0
+    meanConsec <- 0
+  } else {
+    exceed <- y$tempPredicted > threshold
+    consec <- rle(exceed)
+    consecExceed <- consec$lengths[consec$values]
+    maxConsec = max(consecExceed, na.rm = T)
+    meanConsec = mean(consecExceed, na.rm = T)
+  }
+  d <- data.frame(maxConsec, meanConsec)
+  names(d) <- paste(names(d), '_', threshold, sep='')
+  return(d)
+}
+
 calcConsecExceed <- function(grouped.df, derived,df, threshold, summer = FALSE) {
   
   if(summer) {
