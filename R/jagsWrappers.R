@@ -200,6 +200,7 @@ if(class(param.list) == "character") {
               "B.site",
               #"rho.B.site",
               # "mu.site",
+              "stream.mu",
               "sigma.b.site",
               "B.huc",
               "rho.B.huc",
