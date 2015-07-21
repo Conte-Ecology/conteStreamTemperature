@@ -9,8 +9,9 @@
 #' This function standardizes the list of covariates in the new dataframe (x) using the means and standard deviations from the dataframe (y) that was used to fit (calibrate) the model
 #' @export
 stdCovs <- function(x, y, var.names){
+  # add checks for factors and convert with warning
   for(i in 1:length(var.names)){
-    x[ , var.names[i]] <- (x[ , var.names[i]] - y[which(var.names == var.names[i]), "means"]) / y[which(var.names == var.names[i]), "stdevs"]
+    x[ , var.names[i]] <- (x[ , var.names[i]] - y[which(y$var.names == var.names[i]), "means"]) / y[which(y$var.names == var.names[i]), "stdevs"]
   }
   return(x)
 }
