@@ -28,6 +28,7 @@ stdCovs <- function(x, y, var.names){
 #' @export
 stdFitCovs <- function(x, var.names){
   for(i in 1:length(var.names)){
+    # add checks for factors and convert with warning
     x[ , var.names[i]] <- (x[ , var.names[i]] - mean(x[ , var.names[i]], na.rm = T)) / sd(x[ , var.names[i]], na.rm = T)
   }
   return(x)
