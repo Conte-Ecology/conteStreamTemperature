@@ -182,7 +182,7 @@ data.list <- list(n = n,
                   X.year = as.matrix(X.year),
                   site = sites,
                   huc = hucs,
-                  year = years)
+                  year = years
 )
 
 inits <- function(){
