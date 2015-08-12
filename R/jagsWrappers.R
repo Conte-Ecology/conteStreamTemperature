@@ -145,20 +145,20 @@ K.0 <- length(variables.fixed)
 X.site <- data.cal$data.random.sites
 variables.site <- names(X.site)
 sites <- rand_ids$df_site$sitef
-J <- J
+J <- rand_ids$J
 K <- length(variables.site)
 n <- dim(data)[1]
 W.site <- diag(K)
 
 hucs <- rand_ids$df_huc$hucf
-M <- M
+M <- rand_ids$M
 W.huc <- diag(K)
 
 # Random Year effects
 X.year <- data.cal$data.random.years
 variables.year <- names(X.year)
 years <- rand_ids$df_year$yearf
-Ti <- Ti
+Ti <- rand_ids$Ti
 L <- length(variables.year)
 W.year <- diag(L)
 
@@ -182,7 +182,7 @@ data.list <- list(n = n,
                   X.year = as.matrix(X.year),
                   site = sites,
                   huc = hucs,
-                  year = years)
+                  year = years
 )
 
 inits <- function(){
