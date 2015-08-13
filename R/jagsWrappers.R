@@ -25,7 +25,7 @@
 #' M.ar <- modelRegionalTempAR(data, data.fixed, data.random.sites, data.random.years, n.burn = 1000, n.it = 1000, n.thin = 1, nc = 3, coda = coda.tf, param.list = monitor.params)
 #' }
 #' @export
-modelRegionalTempAR1 <- function(data = tempDataSyncS, cov.list, formulae = NULL, firstObsRows, evalRows, param.list, rand_ids, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3, coda = FALSE, runParallel = TRUE) {
+modelRegionalTempAR1 <- function(data = tempDataSyncS, cov.list, formulae = NULL, firstObsRows, evalRows, param.list, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3, coda = FALSE, runParallel = TRUE) {
   #  temp.model <- function(){
 {
   sink("code/modelRegionalTempAR1.txt")
@@ -144,21 +144,21 @@ K.0 <- length(variables.fixed)
 # Random site effects
 X.site <- data.cal$data.random.sites
 variables.site <- names(X.site)
-sites <- rand_ids$df_site$sitef
-J <- rand_ids$J
+sites <- data$sitef
+J <- length(unique(sites))
 K <- length(variables.site)
 n <- dim(data)[1]
 W.site <- diag(K)
 
-hucs <- rand_ids$df_huc$hucf
-M <- rand_ids$M
+hucs <- data$hucf
+M <- length(unique(hucs))
 W.huc <- diag(K)
 
 # Random Year effects
 X.year <- data.cal$data.random.years
 variables.year <- names(X.year)
-years <- rand_ids$df_year$yearf
-Ti <- rand_ids$Ti
+years <- data$yearf
+Ti <- length(unique(years))
 L <- length(variables.year)
 W.year <- diag(L)
 
@@ -251,7 +251,7 @@ if(runParallel) {
              }
            )
     CL <- makeCluster(nc, type = cluster_type)
-    clusterExport(cl=CL, list("data.list", "inits", "params", "K", "J", "Ti", "L", "n", "W.site", "W.huc", "M", "W.year", "X.site", "X.year", "n.burn", "n.it", "n.thin", "sites", "hucs", "years"), envir = environment())
+    clusterExport(cl=CL, list("data.list", "inits", "params", "K", "J", "Ti", "L", "n", "W.site", "W.huc", "M", "W.year", "X.site", "X.year", "n.burn", "n.it", "n.thin"), envir = environment())
     clusterSetRNGStream(cl=CL, iseed = 2345642)
     
     system.time(out <- clusterEvalQ(CL, {
@@ -283,7 +283,7 @@ if(runParallel) {
            }
     )
     CL <- makeCluster(nc, type = cluster_type)
-    clusterExport(cl=CL, list("data.list", "inits", "params", "K", "J", "Ti", "L", "n", "W.site", "W.huc", "M", "W.year", "X.site", "X.year", "sites", "hucs", "years", "n.burn", "n.it", "n.thin"), envir = environment())
+    clusterExport(cl=CL, list("data.list", "inits", "params", "K", "J", "Ti", "L", "n", "W.site", "W.huc", "M", "W.year", "X.site", "X.year", "n.burn", "n.it", "n.thin"), envir = environment())
     clusterSetRNGStream(cl=CL, iseed = 2345642)
     
     system.time(out <- clusterEvalQ(CL, {

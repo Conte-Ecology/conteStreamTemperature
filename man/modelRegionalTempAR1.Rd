@@ -5,7 +5,7 @@
 \title{modelRegionalTempAR1}
 \usage{
 modelRegionalTempAR1(data = tempDataSyncS, cov.list, formulae = NULL,
-  firstObsRows, evalRows, param.list, rand_ids, n.burn = 5000, n.it = 3000,
+  firstObsRows, evalRows, param.list, n.burn = 5000, n.it = 3000,
   n.thin = 3, nc = 3, coda = FALSE, runParallel = TRUE)
 }
 \arguments{
