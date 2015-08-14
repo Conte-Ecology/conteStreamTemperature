@@ -21,12 +21,15 @@ addInteractions <- function(data) {
                   , dOY2 = dOY ^ 2
                   , dOY3 = dOY ^ 3
                   , airTemp.forest = airTemp * forest # change to riparian forest
+                  , prcp2.da = prcp2 * AreaSqKM
                   , airTemp.prcp2.da = airTemp * prcp2 * AreaSqKM
                   , airTemp.prcp2.da.forest = airTemp * prcp2 * AreaSqKM * forest # change to riparian forest
+                  , prcp30.da = prcp30 * AreaSqKM
                   , airTemp.prcp30.da = airTemp * prcp30 * AreaSqKM
                   , airTemp.agriculture = airTemp * agriculture
                   , airTemp.devel_hi = airTemp * devel_hi
                   , temp7p.forest = temp7p * forest
+                  , prcp7.da = prcp7 * AreaSqKM
                   , temp7p.prcp7.da = temp7p * prcp7 * AreaSqKM
                   , temp7p.forest.prcp7.da = temp7p * forest * prcp7 * AreaSqKM
                   , srad.forest = srad * forest # change to riparian forest?
