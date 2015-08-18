@@ -37,10 +37,13 @@ predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list, fea
     rowSums(as.matrix(select(df, one_of(cov.list$year.ef))) * as.matrix(select(df, one_of(names(B.year[-1])))))
   
   # Add B.ar1 to predictions
-  df <- mutate(df, prev.temp = c(NA, temp[(2:(nrow(data))) -1]))
-  df <- mutate(df, prev.trend = c(NA, trend[(2:nrow(data)) - 1]))
-  df <- mutate(df, prev.err = prev.temp - prev.trend)
-  df <- mutate(df, tempPredicted = trend)
+df <- mutate(df, prev.temp = c(NA, df$temp[(2:(nrow(df))) -1]),
+               prev.trend = c(NA, df$trend[(2:nrow(df)) - 1]),
+               prev.err = prev.temp - prev.trend,
+               tempPredicted = trend,
+               prev.temp = ifelse(newDeploy == 1, NA, prev.temp),
+               prev.err = ifelse(newDeploy == 1, NA, prev.err))
+  
   df[which(!is.na(df$prev.err)), ]$tempPredicted <- df[which(!is.na(df$prev.err)), ]$trend + df[which(!is.na(df$prev.err)), ]$B.ar1 * df[which(!is.na(df$prev.err)), ]$prev.err
   
   return(df)
