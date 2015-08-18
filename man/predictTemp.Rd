@@ -5,7 +5,7 @@
 \title{predictTemp: Predict conditional daily temperatures for observed or unobserved sites}
 \usage{
 predictTemp(data, data.fit = tempDataSyncS, coef.list, cov.list,
-  featureid_site)
+  featureid_site, validate = FALSE)
 }
 \arguments{
 \item{data}{Data frame of covariates for prediction}
@@ -17,6 +17,8 @@ predictTemp(data, data.fit = tempDataSyncS, coef.list, cov.list,
 \item{cov.list}{List of covariates used in the model}
 
 \item{featureid_site}{dataframe with featureid and sites linked}
+
+\item{validate}{Logical if TRUE then the trend is used for the predictions and not adjusted for autocorrelation in the error. Defaults to FALSE}
 }
 \value{
 Numeric vector of predicted daily stream temperatures

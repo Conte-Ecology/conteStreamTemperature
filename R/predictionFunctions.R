@@ -8,6 +8,7 @@
 #' @param cov.list List of covariates used in the model
 #' @param coef.list List of coefficient values estimated from the model
 #' @param featureid_site dataframe with featureid and sites linked
+#' @param validate Logical if TRUE then the trend is used for the predictions and not adjusted for autocorrelation in the error. Defaults to FALSE
 #' @return Numeric vector of predicted daily stream temperatures
 #' @details
 #' The predictions are all conditional on site, HUC8, and year when the data is available and predicts the mean values when any component was not used in the fitting (not in the calibration dataset)
@@ -17,7 +18,7 @@
 #' Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, cov.list = cov.list, coef.list = coef.list, featureid_site = featureid_site))
 #' }
 #' @export
-predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list, featureid_site) {
+predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list, featureid_site, validate = FALSE) {
   
   B.site <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = "site")
   B.huc <- prepConditionalCoef(coef.list = coef.list, cov.list = cov.list, var.name = "huc")
@@ -44,8 +45,10 @@ df <- mutate(df, prev.temp = c(NA, df$temp[(2:(nrow(df))) -1]),
                prev.temp = ifelse(newDeploy == 1, NA, prev.temp),
                prev.err = ifelse(newDeploy == 1, NA, prev.err))
   
+if(validate) {
   df[which(!is.na(df$prev.err)), ]$tempPredicted <- df[which(!is.na(df$prev.err)), ]$trend + df[which(!is.na(df$prev.err)), ]$B.ar1 * df[which(!is.na(df$prev.err)), ]$prev.err
-  
+}
+
   return(df)
 }
 
