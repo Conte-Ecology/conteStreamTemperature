@@ -45,7 +45,7 @@ df <- mutate(df, prev.temp = c(NA, df$temp[(2:(nrow(df))) -1]),
                prev.temp = ifelse(newDeploy == 1, NA, prev.temp),
                prev.err = ifelse(newDeploy == 1, NA, prev.err))
   
-if(validate) {
+if(!validate) {
   df[which(!is.na(df$prev.err)), ]$tempPredicted <- df[which(!is.na(df$prev.err)), ]$trend + df[which(!is.na(df$prev.err)), ]$B.ar1 * df[which(!is.na(df$prev.err)), ]$prev.err
 }
 
