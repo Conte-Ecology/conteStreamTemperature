@@ -38,6 +38,10 @@ predictTemp <- function(data, data.fit = tempDataSyncS, coef.list, cov.list, fea
     rowSums(as.matrix(select(df, one_of(cov.list$year.ef))) * as.matrix(select(df, one_of(names(B.year[-1])))))
   
   # Add B.ar1 to predictions
+  
+  df <- df %>%
+    dplyr::arrange(featureid, date)
+  
 df <- mutate(df, prev.temp = c(NA, df$temp[(2:(nrow(df))) -1]),
                prev.trend = c(NA, df$trend[(2:nrow(df)) - 1]),
                prev.err = prev.temp - prev.trend,
