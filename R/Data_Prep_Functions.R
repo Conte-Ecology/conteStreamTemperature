@@ -59,8 +59,7 @@ addInteractions <- function(data) {
 #' var: blah, blah, blah
 #' value: something, something
 #' @export
-indexDeployments <- function (data, regional = FALSE) 
-{
+indexDeployments <- function (data, regional = FALSE) {
   tbl_df(data)
   data <- ungroup(data)
   data$sitef <- as.numeric(as.factor(data$site))
@@ -72,13 +71,15 @@ indexDeployments <- function (data, regional = FALSE)
     data <- arrange(data, site, date)
   }
   data$rowNum <- 1:nrow(data)
-  data <- data %>% dplyr::mutate(siteShift = c(1, sitef[1:(nrow(data) - 1)]), 
-                                 dateShift = c(1, date[1:(nrow(data) - 1)]), 
-                                 newSite = sitef == siteShift + 1, 
-                                 newDate = date != dateShift + 1, isNA = is.na(temp), 
-                                 isNAShift = c(FALSE, isNA[1:(nrow(data) - 1)]), 
-                                 newDeploy = (newSite | newDate | isNAShift) * 1, 
-                                 deployID = cumsum(newDeploy))
+  data$siteShift <- c(1, data$sitef[1:(nrow(data) - 1)])
+  data$dateShift <- c(1, data$date[1:(nrow(data) - 1)])
+  data <- data %>%
+    dplyr::mutate(newSite = sitef ==  siteShift + 1,
+                  newDate = date != dateShift + 1, 
+                  isNA = is.na(temp), 
+                  isNAShift = c(FALSE, isNA[1:(nrow(data) - 1)]), 
+                  newDeploy = (newSite | newDate | isNAShift) * 1, 
+                  deployID = cumsum(newDeploy))
   return(data)
 }
 
