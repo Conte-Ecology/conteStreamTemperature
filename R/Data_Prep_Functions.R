@@ -40,6 +40,9 @@ addInteractions <- function(data) {
                   , airTemp.alloffnet = airTemp * alloffnet
                   , allonnet2 = allonnet * allonnet
                   , airTemp.allonnet2 = airTemp * allonnet *allonnet
+                  , airTemp.impoundArea = airTemp * impoundArea
+                  , impoundArea2 = impoundArea * impoundArea
+                  , airTemp.impoundArea2 = airTemp * impoundArea2
                   , devel_hi.prcp2.da = devel_hi * prcp2 * AreaSqKM
                   , agriculture.prcp2.da = agriculture * prcp2 * AreaSqKM
     )
