@@ -13,6 +13,32 @@ rmse <- function(error, na.rm = T) {
 }
 
 
+#' @title nse: Nash-Sutcliffe Efficiency
+#'
+#' @description
+#' \code{nse} returns Nash-Sutcliffe Efficiency coefficient
+#'
+#' @param obs numeric vector of observed values
+#' @param pred numeric vector of predicted values with the same length as obs
+#' @param warn logical whether to print or supress the warning message when NSE not calculated
+#' @details
+#' var: blah, blah, blah
+#' value: something, something
+#' @export
+nse <- function(obs, pred, warn = FALSE) {
+  denom <- sum((obs - mean(obs, na.rm = TRUE))^2, na.rm = TRUE)
+  if (denom != 0) {
+    NSE <- 1 - (sum((obs - pred)^2, na.rm = TRUE)/denom)
+  }
+  else {
+    NSE <- NA_real_
+    if(warn) warning("Division by 0, cannot calculate NSE")
+  }
+  return(NSE)
+}
+
+
+
 #' @title mae: mean absolute error
 #'
 #' @description
