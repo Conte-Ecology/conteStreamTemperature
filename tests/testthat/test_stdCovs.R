@@ -18,9 +18,9 @@ x$c <- rnorm(nrow(x), c_mean, c_sd)
 x_std <- stdCovs(x=x, y=df_stds, var.names = var.names)
 
 # test that all variable names are present in x - change to expect error if not all true
-test_that("all variables are present in dataframe") {
+test_that("all variables are present in dataframe", {
   expect_true(all(var.names %in% names(x)))
-}
+})
 
 # test handling of factors
 
