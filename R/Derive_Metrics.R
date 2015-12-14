@@ -16,6 +16,8 @@
 #' }
 #' @export
 deriveMetrics <- function(fullDataSync) {
+  library(dplyr)
+  
   byfeatureid <- group_by(fullDataSync, featureid)
   byfeatureidYear <- group_by(byfeatureid, year, add = TRUE)
   #(maxTempfeatureid <- dplyr::dplyr::summarise(byfeatureid, max(tempPredicted, na.rm = T)))
@@ -607,31 +609,31 @@ calcConsecExceed <- function(y, threshold = 22) {
   return(d)
 }
 
-calcConsecExceed <- function(grouped.df, derived,df, threshold, summer = FALSE) {
-  
-  if(summer) {
-    consecExceed <- grouped.df %>%
-      dplyr::mutate(month = as.numeric(format(date, "%m"))) %>%
-      dplyr::filter(month >= 6 & month <= 8) %>%
-      dplyr::mutate(exceed = ifelse(tempPredicted > temp.threshold, 1, 0),
-                    lag_exceed = lag(exceed, n = 1),
-                    #sum_exceed = exceed + lag_exceed,
-                    event_start = ifelse(exceed == 1 & lag_exceed != 1, 1, 0)) %>%#,
-                    #event_day = if(lag_exceed > 0, event_day[i-1]+1, exceed)
-                   # event = if(exceed == 1 & lag_exceed == 1, "name", NA)  # don't know how to name this without a for loop through 1.8 billion records
-      # dplyr::group_by(event)
-      
-      # easy to calculate the number of events but not the duration without resorting to a for loop or using LOTS of lag columns
-      dplyr::summarise(nExceedEvents = sum(event_start)) %>%
-      dplyr::summarise(nExceedEventsMean = mean(nExceed))
-  }
-  
-  derived.df <- dplyr::left_join(derived.df, consecExceed, by = "featureid")
-  
-  rm(consecExceed)
-  
-  return(derived.df)
-}
+# calcConsecExceed <- function(grouped.df, derived,df, threshold, summer = FALSE) {
+#   
+#   if(summer) {
+#     consecExceed <- grouped.df %>%
+#       dplyr::mutate(month = as.numeric(format(date, "%m"))) %>%
+#       dplyr::filter(month >= 6 & month <= 8) %>%
+#       dplyr::mutate(exceed = ifelse(tempPredicted > temp.threshold, 1, 0),
+#                     lag_exceed = lag(exceed, n = 1),
+#                     #sum_exceed = exceed + lag_exceed,
+#                     event_start = ifelse(exceed == 1 & lag_exceed != 1, 1, 0)) %>%#,
+#                     #event_day = if(lag_exceed > 0, event_day[i-1]+1, exceed)
+#                    # event = if(exceed == 1 & lag_exceed == 1, "name", NA)  # don't know how to name this without a for loop through 1.8 billion records
+#       # dplyr::group_by(event)
+#       
+#       # easy to calculate the number of events but not the duration without resorting to a for loop or using LOTS of lag columns
+#       dplyr::summarise(nExceedEvents = sum(event_start)) %>%
+#       dplyr::summarise(nExceedEventsMean = mean(nExceed))
+#   }
+#   
+#   derived.df <- dplyr::left_join(derived.df, consecExceed, by = "featureid")
+#   
+#   rm(consecExceed)
+#   
+#   return(derived.df)
+# }
 
 
 #' @title calc7DADM

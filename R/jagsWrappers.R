@@ -218,14 +218,14 @@ data.list <- list(n = n,
 
 tau.huc <- as.matrix(cbind(
   c(runif(1,3.5,4.5), runif(1,-2.5, -2), runif(1,-3,-2.5)), 
-  c(0, runif(1,10, 14), runif(1,-0.5,-0.1)), 
-  c(0, 0, runif(1,6,7))))
+  c(0, runif(1,10, 20), runif(1,-0.5,-0.1)), 
+  c(0, 0, runif(1,3,10))))
 
 tau.year = as.matrix(cbind(
   c(runif(1,5,6.2), runif(1,-2, -1.5), runif(1,1,1.5), runif(1,-2.5,-2)), 
-  c(0, runif(1,5, 5.5), runif(1,0,0.5), runif(1,3,4)), 
-  c(0, 0, runif(1,5,6), runif(1,0.5,1.2)),
-  c(0, 0, 0, runif(1,5,5.5))))
+  c(0, runif(1,3, 5.5), runif(1,0,0.5), runif(1,3,4)), 
+  c(0, 0, runif(1,5,10), runif(1,0.5,1.2)),
+  c(0, 0, 0, runif(1,3,5.5))))
 
 inits <- function(L = L, K = K, tau.huc = tau.huc, tau.year = tau.year){
   list(#B.raw = array(rnorm(J*K), c(J,K)), 
@@ -410,6 +410,11 @@ if(runParallel) {
 #' }
 #' @export
 modelRegionalTempAR1 <- function(data = tempDataSyncS, cov.list, formulae = NULL, firstObsRows, evalRows, param.list, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3, coda = FALSE, runParallel = TRUE, cluster_type = NULL) {
+  library(parallel)
+  library(coda)
+  library(rjags)
+  library(dplyr)
+  
   #  temp.model <- function(){
 {
   sink("code/modelRegionalTempAR1.txt")
@@ -775,6 +780,11 @@ if(runParallel) {
 #' }
 #' @export
 modelRegionalTempAR1SiteScaled <- function(data = tempDataSyncS, cov.list, formulae = NULL, firstObsRows, evalRows, param.list, n.burn = 5000, n.it = 3000, n.thin = 3, nc = 3, coda = FALSE, runParallel = TRUE, cluster_type = NULL) {
+  library(parallel)
+  library(coda)
+  library(rjags)
+  library(dplyr)
+  
   #  temp.model <- function(){
 {
   sink("code/modelRegionalTempAR1.txt")
