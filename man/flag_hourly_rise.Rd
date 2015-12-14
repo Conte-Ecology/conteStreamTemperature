@@ -18,7 +18,7 @@ Flag days with Rate of change in temperature per hour above deg
 \code{flag_hourly_rise} Check for out of water (out of water vs. dry stream?)
 }
 \details{
-Rate of change in temperature per hour
+Rate of change in temperature per hour. Problem of how to determine if and when the logger goes back to normal. This might necessitate visual inspection.
 }
 \examples{
 \dontrun{

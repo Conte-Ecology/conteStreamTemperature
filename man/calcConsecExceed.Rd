@@ -4,16 +4,16 @@
 \alias{calcConsecExceed}
 \title{calcConsecExceed}
 \usage{
-calcConsecExceed(grouped.df, derived, df, threshold, summer = FALSE)
+calcConsecExceed(y, threshold = 22)
 }
 \arguments{
-\item{grouped.df}{Dataframe grouped by featureid then year}
-
 \item{threshold}{Temperature threshold above which causes physiological problems for species of interest}
 
-\item{summer}{Logical calculate metric just for June-August. Default FALSE}
+\item{grouped.df}{Dataframe grouped by featureid then year}
 
 \item{derived.df}{Dataframe of derived metrics}
+
+\item{summer}{Logical calculate metric just for June-August. Default FALSE}
 }
 \value{
 Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years

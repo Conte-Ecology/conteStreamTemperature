@@ -11,9 +11,9 @@ Description: This package cleans daily and subdaily temperature data, reduces
     subdaily to daily data, joins with Daymet and landscape data. It also uses
     a hierarchical model in JAGS to estimate coefficients and predicted daily
     temperature.
-Depends:
+Depends: 
     R (>= 3.1.0)
-Imports:
+Imports: 
     rjags,
     knitr,
     ggmcmc,
@@ -26,7 +26,12 @@ Imports:
     gridExtra,
     reshape2,
     sp,
-    abind
+    abind,
+    RPostgreSQL,
+    ggmap,
+    tidyr,
+    zoo
 License: file LICENSE
 LazyData: TRUE
 VignetteBuilder: knitr
+Suggests: testthat

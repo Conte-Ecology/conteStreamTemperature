@@ -4,16 +4,16 @@
 \alias{predictTemp}
 \title{predictTemp: Predict conditional daily temperatures for observed or unobserved sites}
 \usage{
-predictTemp(fullDataSyncS, coef.list, rand_ids, Random_AR1 = FALSE)
+predictTemp(data, coef.list, cov.list, rand_ids, Random_AR1 = FALSE)
 }
 \arguments{
-\item{coef.list}{List of coefficient values estimated from the model}
-
 \item{data}{Data frame of covariates for prediction}
 
-\item{data.fit}{Data frame used for fitting (calibrating) the JAGS model}
+\item{coef.list}{List of coefficient values estimated from the model}
 
 \item{cov.list}{List of covariates used in the model}
+
+\item{data.fit}{Data frame used for fitting (calibrating) the JAGS model}
 
 \item{featureid_site}{dataframe with featureid and sites linked}
 
