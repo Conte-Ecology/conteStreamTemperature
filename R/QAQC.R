@@ -1,3 +1,27 @@
+# flag if n number of points in a row are within 0.1 C (calc number of ~identical temps in a row)
+roll_consistant <- function() {
+  
+}
+
+#' @title dewater
+#'
+#' @description
+#' \code{dewater} Median observations per day for each time series
+#'
+#' @param data time series data pull from the postgres database (df_values table)
+#' @return Median observations per day for each time series
+#' @details
+#' blah, blah, blah, something, something
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
+
+
+
+
 #' @title obs_freq
 #'
 #' @description
@@ -86,6 +110,9 @@ flag_interval <- function(data) {
 #' }
 #' @export
 flag_incomplete <- function(data) {
+  data <- data %>%
+    dplyr::ungroup() %>%
+    dplyr::group_by(series_id)
   if(!("median_freq" %in% colnames(data))) {
     data <- obs_freq(data)
   }
@@ -104,7 +131,7 @@ flag_incomplete <- function(data) {
 #' @param deg Threshold change in degrees for flag
 #' @return Flag days with Rate of change in temperature per hour above deg
 #' @details
-#' Rate of change in temperature per hour
+#' Rate of change in temperature per hour. Problem of how to determine if and when the logger goes back to normal. This might necessitate visual inspection.
 #' @examples
 #' 
 #' \dontrun{
@@ -147,20 +174,108 @@ flag_hourly_rise <- function(data, deg = 5) {
 #' 
 #' }
 #' @export
-flag_daily_rise <- function(data, deg = 5) {
+flag_daily_rise <- function (data, deg = 5) 
+{
   data <- ungroup(data)
   data$row <- 1:nrow(data)
-  data$temp_prev <- c(NA_real_, data[2:nrow(data)-1, ]$temp)
-  data$series_prev <- c(NA_character_, data[1:nrow(data)-1, ]$series_id)
-  data <- data %>%
-    #group_by(series_id) %>%
-    mutate(series_start = ifelse(is.na(series_prev), 1, ifelse(series_id == series_prev, NA_real_, 1)),
-           temp_prev = ifelse(is.na(series_start), temp_prev, NA_real_),
-           d_temp = temp - temp_prev,
-           flag_daily_rise = ifelse(abs(d_temp) < deg | is.na(d_temp), FALSE, TRUE))
-  
+  data$temp_prev <- c(NA_real_, data[2:nrow(data) - 1, ]$temp)
+  if(length(data$series_id)==0) {
+    data$series_id = data$featureid
+  }
+  data$series_prev <- c(NA_character_, data[1:nrow(data) - 
+                                              1, ]$series_id)
+  data <- data %>% mutate(series_start = ifelse(is.na(series_prev), 
+                                                1, ifelse(series_id == series_prev, NA_real_, 1)), temp_prev = ifelse(is.na(series_start), 
+                                                                                                                      temp_prev, NA_real_), d_temp = temp - temp_prev, flag_daily_rise = ifelse(abs(d_temp) < 
+                                                                                                                                                                                                  deg | is.na(d_temp), FALSE, TRUE))
   return(data)
 }
+
+
+#' @title MAD.roller
+#'
+#' @description
+#' \code{MAD.roller} Median Absolute Deviations
+#'
+#' @param vals Numeric temperature values
+#' @param window Integer number of points to include in the window calculating the median for comparision
+#' @return Median Absolute Deviation for each value compared to the windowed median
+#' @details
+#' Adapted from the sensorQC package
+#' blah, blah, blah, something, something
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
+MAD.roller <- function(vals, window){
+  library(RcppRoll)
+  if(!is.numeric(window) | length(window) != 1) {
+    stop("window must be a single numeric value")
+  }
+  #vals <- data[ , var]
+  # Croux and Rousseeuw, 1992
+  if(window >= 10) {
+    b <- 1/qnorm(3/4)
+  }
+  if(window == 9) {
+    b <- 1.107
+  }
+  if(window == 8) {
+    b <- 1.129
+  }
+  if(window == 7) {
+    b <- 1.140
+  }
+  if(window == 6) {
+    b <- 1.200
+  }
+  if(window == 5) {
+    b <- 1.206
+  }
+  if(window == 4) {
+    b <- 1.363
+  }
+  if(window < 4) {
+    stop("window must be a numeric value >= 4")
+  }
+  warning('MAD.roller function has not been robustly tested w/ NAs')
+  u.i <- is.finite(vals)
+  left.fill <- median(head(vals[u.i], ceiling(window/2)))
+  right.fill <- median(tail(vals[u.i], ceiling(window/2)))
+  medians <- roll_median(vals[u.i], n=window, fill=c(left.fill, 0, right.fill))
+  abs.med.diff <- abs(vals[u.i]-medians)
+  left.fill <- median(head(abs.med.diff, ceiling(window/2)))
+  right.fill <- median(tail(abs.med.diff, ceiling(window/2)))
+  abs.med <- roll_median(abs.med.diff, n=window, fill=c(left.fill, 0, right.fill))
+  MAD <- abs.med*b
+  MAD.normalized = rep(NA,length(vals))
+  MAD.normalized[u.i] <- abs.med.diff/MAD # division by zero
+  MAD.normalized[is.na(MAD.normalized)] <- 0
+  #data$MAD.normalized <- MAD.normalized
+  #return(data)
+  return(MAD.normalized)
+}
+
+
+MAD.windowed <- function(vals, windows){
+  stopifnot(length(vals) == length(windows))
+  if (length(unique(windows)) == 1){
+    w = unique(windows)
+    x = vals
+    return(MAD.roller(x, w))
+  } else {
+    . <- '_dplyr_var'
+    mad <- group_by_(data.frame(x=vals,w=windows), 'w') %>% 
+      mutate_(mad='sensorQC:::MAD.values(x)') %>% 
+      .$mad
+    return(mad)
+  }
+}
+
+
+
 
 #' @title convert_neg
 #'
