@@ -18,93 +18,86 @@
 #' Predictions <- predictTemp(data = tempDataSyncValidS, data.fit = tempDataSyncS, cov.list = cov.list, coef.list = coef.list, featureid_site = featureid_site))
 #' }
 #' @export
-predictTemp <- function(fullDataSyncS, coef.list, rand_ids, Random_AR1 = FALSE) {
-  
-  if(!exists("fullDataSyncS$sitef")) {
-    fullDataSyncS <- fullDataSyncS %>%
-      left_join(rand_ids$df_site)
+predictTemp <- function (data, coef.list, cov.list, rand_ids, Random_AR1 = FALSE) {
+  if (!exists("data$sitef")) {
+    data <- data %>% left_join(rand_ids$df_site)
   }
-  if(!exists("fullDataSyncS$hucf")) {
-    fullDataSyncS <- fullDataSyncS %>%
-      left_join(rand_ids$df_huc)
+  if (!exists("data$hucf")) {
+    data <- data %>% left_join(rand_ids$df_huc)
   }
-  if(!exists("fullDataSyncS$yearf")) {
-    fullDataSyncS <- fullDataSyncS %>%
-      left_join(rand_ids$df_year)
+  if (!exists("data$yearf")) {
+    data <- data %>% left_join(rand_ids$df_year)
   }
-  
-  ############# Predictions ##############
-  #fullDataSyncS <- predictTemp(data = fullDataSyncS, coef.list = coef.list, cov.list = cov.list, featureid_site = featureid_site)
-  
-  fixed.ef <- as.numeric(coef.list$B.fixed$mean) # separate out the iteration or do for mean/median
-  
-  # add specific random effects to the dataframe
-  fullDataSyncS <- left_join(fullDataSyncS, coef.list$B.site)
-  fullDataSyncS <- left_join(fullDataSyncS, coef.list$B.huc) # problem with validation data, need to use the mean when huc don't match
-  fullDataSyncS <- left_join(fullDataSyncS, coef.list$B.year)
-  
-  
+  fixed.ef <- as.numeric(coef.list$B.fixed$mean)
+  data <- left_join(data, coef.list$B.site)
+  data <- left_join(data, coef.list$B.huc)
+  data <- left_join(data, coef.list$B.year)
   for (j in 2:length(names(coef.list$B.site))) {
-    fullDataSyncS[, names(coef.list$B.site[j])][is.na(fullDataSyncS[, names(coef.list$B.site[j])])] <- colMeans(coef.list$B.site[j])
+    data[, names(coef.list$B.site[j])][is.na(data[,names(coef.list$B.site[j])])] <-
+      colMeans(coef.list$B.site[j])
   }
   for (j in 2:length(names(coef.list$B.huc))) {
-    fullDataSyncS[, names(coef.list$B.huc[j])][is.na(fullDataSyncS[, names(coef.list$B.huc[j])])] <- colMeans(coef.list$B.huc[j])
+    data[, names(coef.list$B.huc[j])][is.na(data[,
+                                                 names(coef.list$B.huc[j])])] <-
+      colMeans(coef.list$B.huc[j])
   }
   for (j in 2:length(names(coef.list$B.year))) {
-    fullDataSyncS[, names(coef.list$B.year[j])][is.na(fullDataSyncS[, names(coef.list$B.year[j])])] <- colMeans(coef.list$B.year[j])
+    data[, names(coef.list$B.year[j])][is.na(data[,
+                                                  names(coef.list$B.year[j])])] <-
+      colMeans(coef.list$B.year[j])
   }
-  
-  fullDataSyncS$fixed.ef <- as.vector(fixed.ef %*% t(as.matrix(as.data.frame(unclass(select(ungroup(fullDataSyncS), one_of(cov.list$fixed.ef)))))))
-  fullDataSyncS$site.ef <- rowSums(as.matrix(select(fullDataSyncS, one_of(cov.list$site.ef))) * as.matrix(select(fullDataSyncS, starts_with("B.site"))))
-  fullDataSyncS$huc.ef <- rowSums(as.matrix(select(fullDataSyncS, one_of(cov.list$huc.ef))) * as.matrix(select(fullDataSyncS, starts_with("B.huc"))))
-  fullDataSyncS$year.ef <- rowSums(as.matrix(select(fullDataSyncS, one_of(cov.list$year.ef))) * as.matrix(select(fullDataSyncS, starts_with("B.year"))))
-  
-  # fullDataSyncS$trend <- rowSums(as.matrix(dplyr::select(fullDataSyncS, one_of(c("fixed.ef", "site.ef", "huc.ef", "year.ef")))))
-  # FAILS
-  
-  #fullDataSyncS <- fullDataSyncS %>%
-  # dplyr::mutate(trend = fixed.ef + site.ef + huc.ef + year.ef) # works fine outside foreach
-  
-  fullDataSyncS$trend <- fullDataSyncS$fixed.ef + fullDataSyncS$site.ef + fullDataSyncS$huc.ef + fullDataSyncS$year.ef # WORKS!!!
-  
-  # Add B.ar1 to predictions
-  #fullDataSyncS <- group_by(fullDataSyncS, sitef)
-  fullDataSyncS <- mutate(fullDataSyncS, prev.temp = c(NA, fullDataSyncS$temp[(2:(nrow(fullDataSyncS))) -1]),
-                          prev.trend = c(NA, fullDataSyncS$trend[(2:nrow(fullDataSyncS)) - 1]),
-                          prev.err = prev.temp - prev.trend,
-                          tempPredicted = trend,
-                          prev.temp = ifelse(newDeploy == 1, NA, prev.temp),
-                          prev.err = ifelse(newDeploy == 1, NA, prev.err))
-  
-  if(Random_AR1) {
-    #B.ar1.sub <- data.frame(sitef = rand_ids$df_site$sitef)
-    B.ar1.sub <- coef.list$B.ar1 %>%
-      dplyr::select(sitef, mean) %>%
-      dplyr::rename(B.ar1 = mean)
-    fullDataSyncS <- left_join(fullDataSyncS, B.ar1.sub, by = c("sitef"))
-    fullDataSyncS <- fullDataSyncS %>%
-      dplyr::mutate(B.ar1 = ifelse(is.na(B.ar1), mean(B.ar1.sub$B.ar1, na.rm = T), B.ar1)) %>%
-      dplyr::arrange(featureid, date) 
-  } else {
-    fullDataSyncS$B.ar1 <- coef.list$B.ar1$mean
-    fullDataSyncS <- fullDataSyncS %>% dplyr::arrange(featureid, date) 
+  data$fixed.ef <-
+    as.vector(fixed.ef %*% t(as.matrix(as.data.frame(unclass(
+      select(ungroup(data),
+             one_of(cov.list$fixed.ef))
+    )))))
+  data$site.ef <- rowSums(as.matrix(select(
+    data,
+    one_of(cov.list$site.ef)
+  )) * as.matrix(select(data,
+                        starts_with("B.site"))))
+  data$huc.ef <- rowSums(as.matrix(select(
+    data,
+    one_of(cov.list$huc.ef)
+  )) * as.matrix(select(data,
+                        starts_with("B.huc"))))
+  data$year.ef <- rowSums(as.matrix(select(
+    data,
+    one_of(cov.list$year.ef)
+  )) * as.matrix(select(data,
+                        starts_with("B.year"))))
+  data$trend <-
+    data$fixed.ef + data$site.ef +
+    data$huc.ef + data$year.ef
+  data <- mutate(
+    data, prev.temp = c(NA,
+                        data$temp[(2:(nrow(data))) - 1]), prev.trend = c(NA,
+                                                                         data$trend[(2:nrow(data)) - 1]), prev.err = prev.temp -
+      prev.trend, tempPredicted = trend, prev.temp = ifelse(newDeploy ==
+                                                              1, NA, prev.temp), prev.err = ifelse(newDeploy == 1,
+                                                                                                   NA, prev.err)
+  )
+  if (Random_AR1) {
+    B.ar1.sub <- coef.list$B.ar1 %>% dplyr::select(sitef,
+                                                   mean) %>% dplyr::rename(B.ar1 = mean)
+    data <- left_join(data, B.ar1.sub,
+                      by = c("sitef"))
+    data <-
+      data %>% dplyr::mutate(B.ar1 = ifelse(is.na(B.ar1),
+                                            mean(B.ar1.sub$B.ar1, na.rm = T), B.ar1)) %>% dplyr::arrange(featureid,
+                                                                                                         date)
   }
-  
-  
-  fullDataSyncS[which(!is.na(fullDataSyncS$prev.err)), ]$tempPredicted <- fullDataSyncS[which(!is.na(fullDataSyncS$prev.err)), ]$trend + fullDataSyncS[which(!is.na(fullDataSyncS$prev.err)), ]$B.ar1 * fullDataSyncS[which(!is.na(fullDataSyncS$prev.err)), ]$prev.err
-  
-  # unofficial warning message
-  #   mean.pred <- mean(fullDataSync$tempPredicted, na.rm = T)
-  #   if(mean.pred == "NaN") {
-  #     warning(paste0(i, " of ", n.loops, " loops has no predicted temperatures"))
-  #   } 
-  
-  fullDataSyncS <- dplyr::arrange(fullDataSyncS, rowNum)
-  
-  fullDataSyncS <- data.frame(unclass(fullDataSyncS), stringsAsFactors = FALSE)
-  
-  return(fullDataSyncS)
-  
+  else {
+    data$B.ar1 <- coef.list$B.ar1$mean
+    data <- data %>% dplyr::arrange(featureid,
+                                    date)
+  }
+  data[which(!is.na(data$prev.err)),]$tempPredicted <-
+    data[which(!is.na(data$prev.err)),]$trend + data[which(!is.na(data$prev.err)),]$B.ar1 * data[which(!is.na(data$prev.err)),]$prev.err
+  data <- dplyr::arrange(data, rowNum)
+  data <-
+    data.frame(unclass(data), stringsAsFactors = FALSE)
+  return(data)
 }
 
 
@@ -130,6 +123,11 @@ predictTemp <- function(fullDataSyncS, coef.list, rand_ids, Random_AR1 = FALSE) 
 #' }
 #' @export
 prepData <- function(catches_string, springFallBPs, df_covariates_upstream, tempDataSync, featureid_lat_lon, featureid_huc8, rand_ids) {
+  
+  library(RPostgreSQL)
+  library(dplyr)
+  library(zoo)
+  library(lubridate)
   
   ########## pull daymet records ##########
   drv <- dbDriver("PostgreSQL")
