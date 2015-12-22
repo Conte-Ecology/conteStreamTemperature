@@ -3,6 +3,59 @@ roll_consistant <- function() {
   
 }
 
+
+#' @title flag_warm_influence
+#'
+#' @description
+#' \code{flag_warm_influence} Flag series with excessive number of values above reference series
+#'
+#' @param data dataframe with two columns of time series
+#' @param vals Character name of the column containing the time series values to test
+#' @param refs Character name of the column containing the reference time series values
+#' @param threshold Numeric proportion (between 0-1) indicating the percent of test values above the corresponding reference values resulting in a TRUE flag
+#' @importFrom magrittr "%>%"
+#' @return dataframe input data returned with additional logical column indicating whether the time series is excessively warm compared to the reference
+#' @details
+#' The original intended use of this function is to identify stream sites with significant influence from warm impoundments (spillover dams or beaver dams). If the water temperature is frequently higher than the air temperature on that day and location, there is likely an upstream impoundment affecting the thermal regime at the point of the temperature logger.
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
+flag_warm_influence <- function(data, vals, refs, threshold) {
+  if(!is.data.frame(data)) {
+    stop("data must be of class data.frame")
+  }
+  if(!is.character(vals)) {
+    stop("vals must be of class character")
+  }
+  if(!is.character(refs)) {
+    stop("refs must be of class character")
+  }
+  if(!is.numeric(threshold)) {
+    stop("threshold must be of class numeric")
+  } 
+  if(threshold > 1 | threshold < 0) {
+    stop("threshold must be between 0 and 1")
+  }
+  if(!(vals %in% names(data))) {
+    stop("vals not in names(data)")
+  }
+if(!(refs %in% names(data))) {
+  stop("refs not in names(data)")
+}
+
+diff <- data[ , vals] - data[ , refs]
+warm <- ifelse(diff > 0, TRUE, FALSE)
+
+prop_warm <- sum(warm, na.rm = TRUE) / length(warm)
+flag_warm <- ifelse(prop_warm > threshold, TRUE, FALSE)
+data$flag_warm <- flag_warm
+
+return(data)
+}
+
 #' @title dewater
 #'
 #' @description
