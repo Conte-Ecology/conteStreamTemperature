@@ -16,7 +16,7 @@ roll_consistant <- function() {
 #' @importFrom magrittr "%>%"
 #' @return dataframe input data returned with additional logical column indicating whether the time series is excessively warm compared to the reference
 #' @details
-#' The original intended use of this function is to identify stream sites with significant influence from warm impoundments (spillover dams or beaver dams). If the water temperature is frequently higher than the air temperature on that day and location, there is likely an upstream impoundment affecting the thermal regime at the point of the temperature logger.
+#' The original intended use of this function is to identify stream sites with significant influence from warm impoundments (spillover dams or beaver dams). If the water temperature is frequently higher than the air temperature on that day and location, there is likely an upstream impoundment affecting the thermal regime at the point of the temperature logger. It could also result from effluent input (maybe part of MA DEP sampling) or possibly even from loggers placed in direct sunlight, which would be warm with some down spikes on cloudy days.
 #' @examples
 #' 
 #' \dontrun{
