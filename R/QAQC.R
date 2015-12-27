@@ -3,6 +3,23 @@ roll_consistant <- function() {
   
 }
 
+#' @title flag_mad
+#'
+#' @description
+#' \code{dewater} Median observations per day for each time series
+#'
+#' @param data time series data pull from the postgres database (df_values table)
+#' @return Median observations per day for each time series
+#' @details
+#' blah, blah, blah, something, something
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
+#' 
+
 
 #' @title flag_warm_influence
 #'
@@ -46,12 +63,16 @@ if(!(refs %in% names(data))) {
   stop("refs not in names(data)")
 }
 
-diff <- data[ , vals] - data[ , refs]
-warm <- ifelse(diff > 0, TRUE, FALSE)
+data <- dplyr::mutate_(data, diff = lazyeval::interp(~ x - y, x = as.name(vals), y = as.name(refs)))
 
-prop_warm <- sum(warm, na.rm = TRUE) / length(warm)
-flag_warm <- ifelse(prop_warm > threshold, TRUE, FALSE)
-data$flag_warm <- flag_warm
+data <- data %>%
+  dplyr::mutate(warm = ifelse(diff > 0, TRUE, FALSE)) %>%
+  dplyr::summarise(prop_warm = sum(warm, na.rm = TRUE)/length(warm)) %>%
+  dplyr::mutate_(flag_warm = lazyeval::interp(~ifelse(prop_warm > b, TRUE, FALSE), b = threshold))
+
+# prop_warm <- sum(warm, na.rm = TRUE) / length(warm)
+# flag_warm <- ifelse(prop_warm > threshold, TRUE, FALSE)
+#data$flag_warm <- flag_warm
 
 return(data)
 }
