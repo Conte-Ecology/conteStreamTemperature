@@ -201,8 +201,7 @@ addStreamMuResid <- function(M.wb,tempDataSyncS){
 #' var: blah, blah, blah
 #' value: something, something
 #' @export
-prepData <- function (catches_string, springFallBPs, df_covariates_upstream,
-                      tempDataSync, featureid_lat_lon, featureid_huc8, rand_ids, df_stds) {
+prepData <- function (catches_string, springFallBPs, df_covariates_upstream, tempDataSync, featureid_lat_lon, featureid_huc8, rand_ids, df_stds) {
   drv <- dbDriver("PostgreSQL")
   con <-
     dbConnect(
