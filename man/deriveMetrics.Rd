@@ -9,9 +9,9 @@ deriveMetrics(data, threshold = NULL)
 deriveMetrics(data, threshold = NULL)
 }
 \arguments{
-\item{data}{Dataframe that includes at least featureid, year, temp (observed), and tempPredicted}
+\item{data}{Dataframe created with the prepData and predictTemp functions}
 
-\item{fullDataSync}{Dataframe created with the prepData and predictTemp functions}
+\item{data}{Dataframe that includes at least featureid, year, temp (observed), and tempPredicted}
 }
 \value{
 Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
