@@ -16,6 +16,7 @@ Depends:
 Suggests:
 
 Imports: 
+    rjags (<= 3.15)
     knitr,
     ggmcmc,
     dplyr,
