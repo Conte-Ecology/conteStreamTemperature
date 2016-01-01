@@ -191,7 +191,7 @@ addStreamMuResid <- function(M.wb,tempDataSyncS){
 #' @param catches_string Vector of catchment featureid to prepare for analysis
 #' @param springFallBPs Dataframe of spring-fall breakpoints
 #' @param df_covariates_upstream Dataframe of covariates
-#' @param tempDataSync Data used for modeling
+#' @param tempDataSync Data used for modeling in JAGS
 #' @param featureid_lat_lon Dataframe linking featureid to lat and lon
 #' @param featureid_huc8 Dataframe linking featureid to hucs
 #' @param rand_ids Dataframe of random site, huc, and year info
@@ -205,8 +205,7 @@ prepData <- function (catches_string, springFallBPs, df_covariates_upstream, tem
   drv <- dbDriver("PostgreSQL")
   con <- dbConnect(drv, dbname = "sheds", host = "osensei.cns.umass.edu",
                    user = options("SHEDS_USERNAME"), password = options("SHEDS_PASSWORD"))
-  qry_daymet <- paste0("SELECT featureid, date, tmax, tmin, prcp, dayl, srad, vp, swe, (tmax + tmin) / 2.0 AS airtemp FROM daymet WHERE featureid IN (",
-                       catches_string, ") ;")
+  qry_daymet <- paste0("SELECT featureid, date, tmax, tmin, prcp, dayl, srad, vp, swe, (tmax + tmin) / 2.0 AS airtemp FROM daymet WHERE featureid IN (",catches_string, ") ;")
   rs <- dbSendQuery(con, statement = qry_daymet)
   climateData <- dbFetch(rs, n = -1)
   dbClearResult(rs)

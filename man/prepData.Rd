@@ -17,7 +17,7 @@ prepData(catches_string, springFallBPs, df_covariates_upstream, tempDataSync,
 
 \item{df_covariates_upstream}{Dataframe of covariates}
 
-\item{tempDataSync}{Data used for modeling}
+\item{tempDataSync}{Data used for modeling in JAGS}
 
 \item{featureid_lat_lon}{Dataframe linking featureid to lat and lon}
 
