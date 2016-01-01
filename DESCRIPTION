@@ -14,7 +14,7 @@ Description: This package cleans daily and subdaily temperature data, reduces
 Depends: 
     R (>= 3.1.0)
 Suggests:
-  rjags (<= 3.2)
+
 Imports: 
     knitr,
     ggmcmc,
