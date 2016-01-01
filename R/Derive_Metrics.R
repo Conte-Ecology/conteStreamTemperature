@@ -3,7 +3,7 @@
 #' @description
 #' \code{deriveMetrics} Wrapper to calculate derived metrics in parallel using foreach %dopar%
 #'
-#' @param fullDataSync Dataframe created with the prepData and predictTemp functions
+#' @param data Dataframe created with the prepData and predictTemp functions
 #' 
 #' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
 #' @details
@@ -15,24 +15,24 @@
 #' 
 #' }
 #' @export
-deriveMetrics <- function(fullDataSync) {
+deriveMetrics <- function(data) {
   library(dplyr)
   
-  byfeatureid <- group_by(fullDataSync, featureid)
+  byfeatureid <- group_by(data, featureid)
   byfeatureidYear <- group_by(byfeatureid, year, add = TRUE)
   #(maxTempfeatureid <- dplyr::dplyr::summarise(byfeatureid, max(tempPredicted, na.rm = T)))
   
   derivedfeatureidMetrics <- dplyr::select(byfeatureid, featureid) %>%
     distinct
   
-  # Mean maximum daily mean temperature by featureid (over years) - this must be calculated before totalObs to work with NA and left join if all fullDataSync missing
+  # Mean maximum daily mean temperature by featureid (over years) - this must be calculated before totalObs to work with NA and left join if all data missing
   meanMaxTemp <- byfeatureidYear %>%
     dplyr::summarise(maxTempPredicted = max(tempPredicted, na.rm = T)) %>%
     dplyr::summarise(meanMaxTemp = mean(maxTempPredicted))
   derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, meanMaxTemp, by = "featureid")
   rm(meanMaxTemp)
   
-  # total observations (days with fullDataSync) per featureid
+  # total observations (days with data) per featureid
   totalObs <- byfeatureidYear %>%
     dplyr::filter(!is.na(temp)) %>%
     dplyr::summarise(Obs = n()) %>%
@@ -83,10 +83,11 @@ deriveMetrics <- function(fullDataSync) {
   meanJulyObs <- nJulyObs %>%
     left_join(meanJulyObs) %>%
     dplyr::filter(nJulyObs >= 25) %>%
-    summarise(meanJulyObs = mean(temp, na.rm = T)) %>%
-    left_join(nJulyObsYears)
+    dplyr::summarise(meanJulyObs = mean(temp, na.rm = T)) 
   
-  derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, meanJulyObs, by = "featureid")
+  derivedfeatureidMetrics <- derivedfeatureidMetrics %>%
+    dplyr::left_join(meanJulyObs) %>%
+    dplyr::left_join(nJulyObsYears)
   rm(meanJulyObs)
   
   # Mean Aug Temp
@@ -160,9 +161,10 @@ deriveMetrics <- function(fullDataSync) {
                   freqMaxTemp.20 = ifelse(!is.na(meanMaxTemp) & is.na(freqMaxTemp.20), 0, freqMaxTemp.20))
   
   derivedfeatureidMetrics <- calcYearsMaxTemp(grouped.df = byfeatureidYear, derived.df = derivedfeatureidMetrics, temp.threshold = 22) %>%
-    mutate(yearsMaxTemp = ifelse(is.na(yearsMaxTemp), 0, as.numeric(yearsMaxTemp))) %>%
-    rename(yearsMaxTemp.22 = yearsMaxTemp) %>%
+    dplyr::mutate(yearsMaxTemp = ifelse(is.na(yearsMaxTemp), 0, as.numeric(yearsMaxTemp))) %>%
+    dplyr::rename(yearsMaxTemp.22 = yearsMaxTemp) %>%
     dplyr::mutate(freqMaxTemp.22 = yearsMaxTemp.22 / length(unique(byfeatureidYear$year)))
+  
   derivedfeatureidMetrics[which(is.na(derivedfeatureidMetrics$meanMaxTemp)), "yearsMaxTemp.22"] <- NA
   derivedfeatureidMetrics[which(is.na(derivedfeatureidMetrics$meanMaxTemp)), "freqMaxTemp.22"] <- NA
   derivedfeatureidMetrics <- derivedfeatureidMetrics %>%
@@ -170,8 +172,8 @@ deriveMetrics <- function(fullDataSync) {
                   freqMaxTemp.22 = ifelse(!is.na(meanMaxTemp) & is.na(freqMaxTemp.22), 0, freqMaxTemp.22))
   
   derivedfeatureidMetrics <- calcYearsMaxTemp(grouped.df = byfeatureidYear, derived.df = derivedfeatureidMetrics, temp.threshold = 23.5) %>%
-    mutate(yearsMaxTemp = ifelse(is.na(yearsMaxTemp), 0, as.numeric(yearsMaxTemp))) %>%
-    rename(yearsMaxTemp.23.5 = yearsMaxTemp) %>%
+    dplyr::mutate(yearsMaxTemp = ifelse(is.na(yearsMaxTemp), 0, as.numeric(yearsMaxTemp))) %>%
+    dplyr::rename(yearsMaxTemp.23.5 = yearsMaxTemp) %>%
     dplyr::mutate(freqMaxTemp.23.5 = yearsMaxTemp.23.5 / length(unique(byfeatureidYear$year)))
   derivedfeatureidMetrics[which(is.na(derivedfeatureidMetrics$meanMaxTemp)), "yearsMaxTemp.23.5"] <- NA
   derivedfeatureidMetrics[which(is.na(derivedfeatureidMetrics$meanMaxTemp)), "freqMaxTemp.23.5"] <- NA
@@ -199,8 +201,8 @@ deriveMetrics <- function(fullDataSync) {
   rm(meanResist)
   
   
-  # User broom and dplyr to get TS for each feature id but make sure it handles NA for entire featureid or entire fullDataSyncsets
-  # Orange %>% group_by(Tree) %>% do(tidy(lm(age ~ circumference, fullDataSync=.)))
+  # User broom and dplyr to get TS for each feature id but make sure it handles NA for entire featureid or entire datasets
+  # Orange %>% group_by(Tree) %>% do(tidy(lm(age ~ circumference, data=.)))
   
   # Thermal Sensitivity
   byfeatureid_complete <- byfeatureid %>%
@@ -228,8 +230,8 @@ deriveMetrics <- function(fullDataSync) {
   
   # RMSE for each featureid (flag highest)
   bar <- byfeatureidYear %>%
-    filter(!(is.na(temp) & !is.na(tempPredicted))) %>%
-    mutate(error = temp - tempPredicted)
+    dplyr::filter(!(is.na(temp) & !is.na(tempPredicted))) %>%
+    dplyr::mutate(error = temp - tempPredicted)
   
   if(dim(bar)[1] > 0) {
     error_metrics <- bar %>%
@@ -285,7 +287,7 @@ deriveMetrics <- function(fullDataSync) {
   #gc()
   ################################
   
-  # derived.site.metrics <- deriveMetrics(fullDataSync)
+  # derived.site.metrics <- deriveMetrics(data)
   
   #derived_metrics
   #   if(exists("metrics") == FALSE) {
