@@ -4,50 +4,22 @@
 \alias{deriveMetrics}
 \title{deriveMetrics}
 \usage{
-deriveMetrics(data, threshold = NULL)
-
-deriveMetrics(data, threshold = NULL)
+deriveMetrics(data)
 }
 \arguments{
 \item{data}{Dataframe created with the prepData and predictTemp functions}
-
-\item{data}{Dataframe that includes at least featureid, year, temp (observed), and tempPredicted}
 }
 \value{
-Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
-
 Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
 }
 \description{
 \code{deriveMetrics} Wrapper to calculate derived metrics in parallel using foreach %dopar%
-
-\code{deriveMetrics} Calculate derived metrics from predicted stream temperatures
 }
 \details{
 blah, blah, blah, something, something
-
-This function calculates the following metrics based on predicted stream temperature across years
-
-* total observations (days with data) per featureid
-* Mean maximum daily mean temperature by featureid (over years)
-* Maximum max daily mean temperature
-* Number of days with stream temp > 18, 20, 22 C and optional user-defined temperature
-* Number of years with mean maximum over 18, 20, 22 C and optional user-defined temperature
-* frequency of years with a mean max over 18, 20, 22 C and optional user-defined temperature
-* Number of days with summer stream temp > 18.29, 21.70 C for CT DEEP
-* Number of years with summer maximum over 18.29 & 21.7 C for CT DEEP
-* frequency of years with a summer max over 18.29 & 21.7 C for CT DEEP
-* Mean resistance to peak air temperature (difference between observed air and predicted stream temperatures during the hottest part of the year)
-* Mean RMSE for each featureid
-* Flag based on RMSE > 95%. These featureids should probably be checked for unrecorded impoundments, restrictive culverts, or large groundwater influences before making management or policy decisions
 }
 \examples{
 \dontrun{
-
-}
-\dontrun{
-df <- predictTemp(data = df, data.fit = tempDataSyncS, cov.list = cov.list, coef.list = coef.list)
-derived.metrics <- deriveMetrics(data = df)
 
 }
 }
