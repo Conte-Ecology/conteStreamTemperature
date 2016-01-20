@@ -25,6 +25,8 @@ addInteractions <- function(data) {
                   , airTemp.prcp2.da = airTemp * prcp2 * AreaSqKM
                   , airTemp.prcp2.da.forest = airTemp * prcp2 * AreaSqKM * forest # change to riparian forest
                   , prcp30.da = prcp30 * AreaSqKM
+                  , airTemp.prcp2 = airTemp * prcp2
+                  , airTemp.prcp30 = airTemp * prcp30
                   , airTemp.prcp30.da = airTemp * prcp30 * AreaSqKM
                   , airTemp.agriculture = airTemp * agriculture
                   , airTemp.devel_hi = airTemp * devel_hi
