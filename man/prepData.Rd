@@ -6,8 +6,27 @@
 \usage{
 prepData(catches_string, springFallBPs, df_covariates_upstream, tempDataSync,
   featureid_lat_lon, featureid_huc8, rand_ids, df_stds)
+
+prepData(catches_string, springFallBPs, df_covariates_upstream, tempDataSync,
+  featureid_lat_lon, featureid_huc8, rand_ids, df_stds)
 }
 \arguments{
+\item{catches_string}{Vector of catchment featureid to prepare for analysis}
+
+\item{springFallBPs}{Dataframe of spring-fall breakpoints}
+
+\item{df_covariates_upstream}{Dataframe of covariates}
+
+\item{tempDataSync}{Data used for modeling in JAGS}
+
+\item{featureid_lat_lon}{Dataframe linking featureid to lat and lon}
+
+\item{featureid_huc8}{Dataframe linking featureid to hucs}
+
+\item{rand_ids}{Dataframe of random site, huc, and year info}
+
+\item{df_stds}{Dataframe of means and standard deviations used for standardizing continuous covariates}
+
 \item{catches_string}{Vector of catchment featureid to prepare for analysis}
 
 \item{springFallBPs}{Dataframe of spring-fall breakpoints}
@@ -26,8 +45,14 @@ prepData(catches_string, springFallBPs, df_covariates_upstream, tempDataSync,
 }
 \description{
 \code{prepData} Wrapper to prepare data for analysis or predictions
+
+\code{prepData} Wrapper to prepare data for analysis or predictions
 }
 \details{
+This function is a mess but currently works. Lots of redundancy, especially in the data imported.
+var: blah, blah, blah
+value: something, something
+
 This function is a mess but currently works. Lots of redundancy, especially in the data imported.
 var: blah, blah, blah
 value: something, something
