@@ -18,7 +18,7 @@
 #' @export
 prepData <- function (catches_string, springFallBPs, df_covariates_upstream, tempDataSync, featureid_lat_lon, featureid_huc8, rand_ids, df_stds) {
   drv <- dbDriver("PostgreSQL")
-  con <- dbConnect(drv, dbname = "sheds_new", host = "osensei.cns.umass.edu",
+  con <- dbConnect(drv, dbname = "sheds", host = "felek.cns.umass.edu",
                    user = options("SHEDS_USERNAME"), password = options("SHEDS_PASSWORD"))
   qry_daymet <- paste0("SELECT featureid, date, tmax, tmin, prcp, dayl, srad, vp, swe, (tmax + tmin) / 2.0 AS airtemp FROM daymet WHERE featureid IN (",catches_string, ") ;")
   rs <- dbSendQuery(con, statement = qry_daymet)
@@ -74,8 +74,8 @@ prepData <- function (catches_string, springFallBPs, df_covariates_upstream, tem
   
   fullDataSync <- fullDataSync %>% 
     dplyr::filter(
-      dOY >= finalSpringBP & dOY <= finalFallBP | is.na(finalSpringBP) | is.na(finalFallBP & finalSpringBP != "Inf" & finalFallBP != "Inf")) %>% 
-    dplyr::filter(dOY >= mean.spring.bp & dOY <= mean.fall.bp)
+      dOY >= finalSpringBP & dOY <= finalFallBP | is.na(finalSpringBP) | is.na(finalFallBP & finalSpringBP != "Inf" & finalFallBP != "Inf"))# %>% 
+   # dplyr::filter(dOY >= mean.spring.bp & dOY <= mean.fall.bp)
   
   var.names <- c(
     "airTemp", "temp7p", "prcp", "prcp2", "prcp7",
