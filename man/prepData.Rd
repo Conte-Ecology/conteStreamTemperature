@@ -4,11 +4,11 @@
 \alias{prepData}
 \title{prepData: Wrapper to prepare data for analysis or predictions}
 \usage{
-prepData(catches_string, springFallBPs, df_covariates_upstream, tempDataSync,
+prepData(catches, springFallBPs, df_covariates_upstream, tempDataSync,
   featureid_lat_lon, featureid_huc8, rand_ids, df_stds)
 }
 \arguments{
-\item{catches_string}{Vector of catchment featureid to prepare for analysis}
+\item{catches}{Vector of catchment featureid to prepare for analysis}
 
 \item{springFallBPs}{Dataframe of spring-fall breakpoints}
 

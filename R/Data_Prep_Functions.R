@@ -3,7 +3,7 @@
 #' @description
 #' \code{prepData} Wrapper to prepare data for analysis or predictions
 #'
-#' @param catches_string Vector of catchment featureid to prepare for analysis
+#' @param catches Vector of catchment featureid to prepare for analysis
 #' @param springFallBPs Dataframe of spring-fall breakpoints
 #' @param df_covariates_upstream Dataframe of covariates
 #' @param tempDataSync Data used for modeling in JAGS
@@ -16,7 +16,7 @@
 #' var: blah, blah, blah
 #' value: something, something
 #' @export
-prepData <- function (catches_string, springFallBPs, df_covariates_upstream, tempDataSync, featureid_lat_lon, featureid_huc8, rand_ids, df_stds) {
+prepData <- function (catches, springFallBPs, df_covariates_upstream, tempDataSync, featureid_lat_lon, featureid_huc8, rand_ids, df_stds) {
   drv <- dbDriver("PostgreSQL")
   con <- dbConnect(drv, dbname = "sheds_new", host = "osensei.cns.umass.edu",
                    user = options("SHEDS_USERNAME"), password = options("SHEDS_PASSWORD"))
