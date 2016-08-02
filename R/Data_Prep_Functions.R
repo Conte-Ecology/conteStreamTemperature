@@ -18,12 +18,14 @@
 #' @export
 prepData <- function (catches_string, springFallBPs, df_covariates_upstream, tempDataSync, featureid_lat_lon, featureid_huc8, rand_ids, df_stds) {
   drv <- dbDriver("PostgreSQL")
-  con <- dbConnect(drv, dbname = "sheds", host = "felek.cns.umass.edu",
+  con <- dbConnect(drv, dbname = "sheds_new", host = "osensei.cns.umass.edu",
                    user = options("SHEDS_USERNAME"), password = options("SHEDS_PASSWORD"))
-  qry_daymet <- paste0("SELECT featureid, date, tmax, tmin, prcp, dayl, srad, vp, swe, (tmax + tmin) / 2.0 AS airtemp FROM daymet WHERE featureid IN (",catches_string, ") ;")
-  rs <- dbSendQuery(con, statement = qry_daymet)
-  climateData <- dbFetch(rs, n = -1)
-  dbClearResult(rs)
+  # qry_daymet <- paste0("SELECT featureid, date, tmax, tmin, prcp, dayl, srad, vp, swe, (tmax + tmin) / 2.0 AS airtemp FROM daymet WHERE featureid IN (",catches_string, ") ;")
+  # rs <- dbSendQuery(con, statement = qry_daymet)
+  # climateData <- dbFetch(rs, n = -1)
+  # dbClearResult(rs)
+  
+  climateData <- get_daymet_featureids(con, featureids = catches)
   dbDisconnect(con)
   
   mean.spring.bp <- mean(dplyr::filter(springFallBPs, finalSpringBP !=

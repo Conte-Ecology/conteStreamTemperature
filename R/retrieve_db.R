@@ -1,3 +1,41 @@
+#' @title get_daymet_featureids
+#'
+#' @description
+#' \code{get_daymet_featureids} Queries and retrieves daymet data from postgres database stored in an array format
+#'
+#' @param con database connection returned from RPostgreSQL::dbConnect
+#' @param featureids numeric or character vector of featureids
+#' 
+#' @return Returns Dreturns data frame of daymet data with columns: [featureid, date, tmax, tmin, prcp, dayl, srad, vp, swe]
+#' @details
+#' Intended for use with the sheds_new database on the osensei server
+#' 
+#' @examples
+#' 
+#' \dontrun{
+#' con <- dbConnect(dbDriver("PostgreSQL"), dbname="daymet")
+#' 
+#' x0 <- get_daymet_featureids(con)                  # throws error: missing featureids
+#' x0 <- get_daymet_featureids(con, featureids = "") # returns empty dataframe
+#' x1 <- get_daymet_featureids(con, featureids = c(201407698))
+#' x2 <- get_daymet_featureids(con, featureids = c(201407698, 201407699))
+#' x3 <- get_daymet_featureids(con, featureids = c("201407698", "201407699"))
+#' x5 <- get_daymet_featureids(con, featureids = c(201407698, 201407699, 201407700, 201407701, 201407702))
+#' dbDisconnect(con)
+#' 
+#' # ggplot(x2, aes(date, tmin)) +
+#' #   geom_line() +
+#' #   facet_wrap(~featureid)
+#' }
+#' @export
+get_daymet_featureids <- function(con, featureids) {
+  featureids_string <- paste0("{", paste0(featureids, collapse=","), "}")
+  
+  sql <- paste0("select * from get_daymet_featureids('", featureids_string, "');")
+  dbGetQuery(con, sql)
+}
+
+
 # Retrieve data from postgres database
 #
 # requires working directory
