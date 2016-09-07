@@ -1,3 +1,311 @@
+#' @title deriveMetricsYear
+#'
+#' @description
+#' \code{deriveMetricsYear} Wrapper to calculate derived metrics in parallel using foreach %dopar%
+#'
+#' @param data Dataframe created with the prepData and predictTemp functions
+#' 
+#' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
+#' @details
+#' blah, blah, blah, something, something
+#' 
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
+deriveMetricsYear <- function(data) {
+  library(dplyr)
+  library(tidyr)
+  
+  byfeatureid <- group_by(data, featureid)
+  byfeatureidYear <- group_by(byfeatureid, year, add = TRUE)
+  #(maxTempfeatureid <- dplyr::dplyr::summarise(byfeatureid, max(tempPredicted, na.rm = T)))
+  
+  derivedfeatureidMetrics <- byfeatureidYear %>%
+    distinct
+  
+  # Mean maximum daily mean temperature by featureid (over years) - this must be calculated before totalObs to work with NA and left join if all data missing
+  meanMaxTemp <- byfeatureidYear %>%
+    dplyr::summarise(meanMaxTemp = max(tempPredicted, na.rm = T)) 
+  
+  derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, meanMaxTemp, by = c("featureid", "year"))
+  rm(meanMaxTemp)
+  
+  # total observations (days with data) per featureid
+  totalObs <- byfeatureidYear %>%
+    dplyr::filter(!is.na(temp)) %>%
+    dplyr::summarise(totalObs = n()) 
+  
+  
+  derivedfeatureidMetrics <- dplyr::left_join(derivedfeatureidMetrics, totalObs, by = c("featureid", "year")) %>%
+    dplyr::mutate(totalObs = as.numeric(ifelse(is.na(totalObs), 0, as.numeric(totalObs))))
+  derivedfeatureidMetrics <- dplyr::select(derivedfeatureidMetrics, featureid, year, totalObs, meanMaxTemp)
+  
+  # Maximum max daily mean temperature
+  maxMaxTemp <- byfeatureidYear %>%
+    dplyr::summarise(maxTemp = max(tempPredicted, na.rm = T))
+  derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, maxMaxTemp, by = c("featureid", "year"))
+  rm(maxMaxTemp)
+  
+  # Mean July Air Temp
+  meanJulyAir <- byfeatureidYear %>%
+    dplyr::mutate(month = as.numeric(format(date, "%m"))) %>%
+    dplyr::filter(month == 7) %>%
+    dplyr::summarise(JulyAirTemp = mean(airTemp, na.rm = T))
+  derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, meanJulyAir, by = c("featureid", "year"))
+  rm(meanJulyAir)
+  
+  # Mean July Water Temp
+  meanJulyTemp <- byfeatureidYear %>%
+    dplyr::mutate(month = as.numeric(format(date, "%m"))) %>%
+    dplyr::filter(month == 7) %>%
+    dplyr::summarise(JulyTemp = mean(tempPredicted, na.rm = T))
+  derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, meanJulyTemp, by = c("featureid", "year"))
+  rm(meanJulyTemp)
+  
+  # Mean July Obs Temp
+  # meanJulyObs <- byfeatureidYear %>%
+  #   dplyr::mutate(month = as.numeric(format(date, "%m"))) %>%
+  #   dplyr::filter(month == 7)
+  # 
+  # nJulyObs <- meanJulyObs %>%
+  #   dplyr::filter(!is.na(temp)) %>%
+  #   dplyr::summarise(nJulyObs = n())
+  # 
+  # nJulyObsYears <- nJulyObs %>%
+  #   dplyr::filter(nJulyObs >= 25) %>% # at least 25 days with observed data
+  #   dplyr::summarise(nYearsJulyObs = n())
+  # 
+  # meanJulyObs <- nJulyObs %>%
+  #   left_join(meanJulyObs) %>%
+  #   dplyr::filter(nJulyObs >= 25) %>%
+  #   dplyr::summarise(meanJulyObs = mean(temp, na.rm = T)) 
+  # 
+  # derivedfeatureidMetrics <- derivedfeatureidMetrics %>%
+  #   dplyr::left_join(meanJulyObs) %>%
+  #   dplyr::left_join(nJulyObsYears)
+  # rm(meanJulyObs)
+  
+  # Mean Aug Temp
+  meanAugTemp <- byfeatureidYear %>%
+    dplyr::mutate(month = as.numeric(format(date, "%m"))) %>%
+    dplyr::filter(month == 8) %>%
+    dplyr::summarise(AugTemp = mean(tempPredicted, na.rm = T))
+  derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, meanAugTemp, by = c("featureid", "year"))
+  rm(meanAugTemp)
+  
+  # Mean Summer Temp
+  meanSummerTemp <- byfeatureidYear %>%
+    dplyr::mutate(month = as.numeric(format(date, "%m"))) %>%
+    dplyr::filter(month >= 6 & month <= 8) %>%
+    dplyr::summarise(SummerTemp = mean(tempPredicted, na.rm = T))
+  derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, meanSummerTemp, by = c("featureid", "year"))
+  rm(meanSummerTemp)
+  
+  # Annual mean 30-day maximum mean daily temperature (#------- only works if 30 days of data otherwise throws error------------)
+  # mean30Day <- byfeatureidYear %>%
+  #   dplyr::arrange(featureid, year, dOY) %>%
+  #   dplyr::mutate(mm30Day = rollapply(data = tempPredicted, 
+  #                                     width = 30, 
+  #                                     FUN = mean, 
+  #                                     align = "right", 
+  #                                     fill = NA, 
+  #                                     na.rm = T)) %>%
+  #   dplyr::summarise(max30DayYear = max(mm30Day, na.rm = T))
+  # derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, mean30Day, by = c("featureid", "year"))
+  # rm(mean30Day)
+  
+  # Number of days with stream temp > threshold
+  derivedfeatureidMetrics <- calcThresholdDaysAnnual(byfeatureidYear, derivedfeatureidMetrics, 18) %>%
+    dplyr::rename(days.18 = days) %>%
+    dplyr::mutate(days.18 = as.numeric(days.18)) %>%
+    dplyr::mutate(days.18 = as.numeric(ifelse(!is.na(meanMaxTemp) & is.na(days.18), 0, days.18)))
+  derivedfeatureidMetrics <- calcThresholdDaysAnnual(byfeatureidYear, derivedfeatureidMetrics, 20) %>%
+    dplyr::rename(days.20 = days) %>%
+    dplyr::mutate(days.20 = as.numeric(days.20)) %>%
+    dplyr::mutate(days.20 = as.numeric(ifelse(!is.na(meanMaxTemp) & is.na(days.20), 0, days.20)))
+  derivedfeatureidMetrics <- calcThresholdDaysAnnual(byfeatureidYear, derivedfeatureidMetrics, 22) %>%
+    dplyr::rename(days.22 = days) %>%
+    dplyr::mutate(days.22 = as.numeric(days.22)) %>%
+    dplyr::mutate(days.22 = as.numeric(ifelse(!is.na(meanMaxTemp) & is.na(days.22), 0, days.22)))
+  #if(class(threshold) == "numeric") derivedfeatureidMetrics <- calcThresholdDaysAnnual(byfeatureidYear, derivedfeatureidMetrics, threshold)
+  
+  # CT DEEP Thresholds
+  #derivedfeatureidMetrics <- calcYearsCold(byfeatureidYear, derivedfeatureidMetrics, states = c("CT"))
+  
+  # Resistance to peak air temperature
+  ## This probably makes the most sense during minimum flow periods but we don't have a sufficient flow model
+  ## 60 or 90 days max air temp?
+  # error if use standardized values rather than original scale
+  # dOY.max.warm <- byfeatureidYear %>%
+  #    mutate(warm.90 = rollsum(x = airTemp, 90, align = "right", fill = NA))
+  #  dOY.max.warm <- dOY.max.warm %>%
+  #   group_by(featureid, year, add = TRUE) %>%
+  #  filter(warm.90 == max(warm.90, na.rm = T)) %>%
+  # select(dOY)
+  meanResist <- byfeatureidYear %>%
+    #filter(dOY > dOY.max.warm$dOY - 90 & dOY <= dOY.max.warm$dOY) %>%
+    dplyr::filter(dOY >= 152 & dOY < 244) %>% # clip to summer
+    dplyr::mutate(absResid = abs(airTemp - tempPredicted)) %>%
+    dplyr::summarise(resistance = sum(absResid))
+  derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, meanResist, by = c("featureid", "year"))
+  rm(meanResist)
+  
+  # User broom and dplyr to get TS for each feature id but make sure it handles NA for entire featureid or entire datasets
+  # Orange %>% group_by(Tree) %>% do(tidy(lm(age ~ circumference, data=.)))
+  
+  # Thermal Sensitivity ------------need to add year into it------------
+  # byfeatureid_complete <- byfeatureidYear %>%
+  #   dplyr::filter(!is.na(tempPredicted) & !is.na(airTemp))
+  # 
+  # group_count <- byfeatureid_complete %>%
+  #   dplyr::summarise(count = n())
+  # 
+  # if(nrow(byfeatureid_complete) >= 5) { # actually want to check for 5 obs within any group
+  #   byfeatureid_complete <- left_join(byfeatureid_complete, group_count) %>%
+  #     dplyr::filter(count >= 5)
+  #   if(nrow(byfeatureid_complete) >= 5 & length(unique(byfeatureid_complete$featureid)) > 1) {
+  #     TS <- byfeatureid_complete %>% do(broom::tidy(lm(tempPredicted ~ airTemp, data = .))) %>%
+  #       dplyr::filter(term == "airTemp") %>%
+  #       dplyr::select(featureid, TS = estimate)
+  #     derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, TS, by = c("featureid", "year"))
+  #     rm(TS)
+  #   } else {
+  #     derivedfeatureidMetrics$TS <- NA_real_
+  #   }
+  # } else {
+  #   derivedfeatureidMetrics$TS <- NA_real_
+  # }
+  
+  
+  # RMSE for each featureid (flag highest)
+  bar <- byfeatureidYear %>%
+    dplyr::filter(!(is.na(temp) & !is.na(tempPredicted))) %>%
+    dplyr::mutate(error = temp - tempPredicted) %>%
+    dplyr::select(featureid, year, temp, tempPredicted, error)
+  
+  if(dim(bar)[1] > 0) {
+    error_metrics <- bar %>%
+      dplyr::summarise(RMSE = rmse(error),
+                       MAE = mae(error),
+                       NSE = nse(temp, tempPredicted))
+    derivedfeatureidMetrics <- dplyr::left_join(derivedfeatureidMetrics, error_metrics, by = c("featureid", "year"))
+  } else {
+    derivedfeatureidMetrics$RMSE <- NA_real_
+    derivedfeatureidMetrics$MAE <- NA_real_
+    derivedfeatureidMetrics$NSE <- NA_real_
+    #     derivedfeatureidMetrics <- derivedfeatureidMetrics %>%
+    #       dplyr::mutate(meanRMSE = NA) %>%
+    #       dplyr::mutate(meanRMSE = as.numeric(meanRMSE))
+  }
+  rm(bar)
+  
+  ############# ADD RMSE by Trend in addition to predicted with AR1 #########
+  
+  # RMSE for each featureid (flag highest)
+  bar <- byfeatureidYear %>%
+    filter(!(is.na(temp) & !is.na(trend))) %>%
+    mutate(error = temp - trend) %>%
+    dplyr::select(featureid, year, temp, tempPredicted, error)
+  
+  if(dim(bar)[1] > 0) {
+    error_metrics <- bar %>%
+      dplyr::summarise(RMSE_trend = rmse(error),
+                       MAE_trend = mae(error),
+                       NSE_trend = nse(temp, tempPredicted))
+    derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, error_metrics, by = c("featureid", "year"))
+  } else {
+    derivedfeatureidMetrics$RMSE_trend <- NA_real_
+    derivedfeatureidMetrics$MAE_trend <- NA_real_
+    derivedfeatureidMetrics$NSE_trend <- NA_real_
+    #     derivedfeatureidMetrics <- derivedfeatureidMetrics %>%
+    #       dplyr::mutate(meanRMSE = NA) %>%
+    #       dplyr::mutate(meanRMSE = as.numeric(meanRMSE))
+  }
+  rm(bar)
+  
+  ########################
+  
+  #derived.site.metrics <- derivedfeatureidMetrics
+  #rm(data)
+  #rm(derivedfeatureidMetrics)
+  #rm(foo)
+  #gc()
+  ################################
+  
+  # derived.site.metrics <- deriveMetrics(data)
+  
+  #derived_metrics
+  #   if(exists("metrics") == FALSE) {
+  #     metrics <- derivedfeatureidMetrics
+  #     #print("no")
+  #   } else {
+  #     metrics <- rbind(metrics, derivedfeatureidMetrics)
+  #   }
+  
+  #saveRDS(metrics.lat.lon, file = paste0(data_dir, "/derived_site_metrics.RData"))
+  #write.table(metrics.lat.lon, file = paste0(data_dir, "/derived_site_metrics.csv"), sep = ',', row.names = F, append = TRUE)
+  
+  metrics <- as.data.frame(derivedfeatureidMetrics)
+  
+  return(metrics)
+}
+
+
+#' @title calcThresholdDaysAnnual
+#'
+#' @description
+#' \code{calcThresholdDaysAnnual} Calculates the median number of days per year that a stream is predicted to exceed a threshold temperature
+#'
+#' @param grouped.df Dataframe grouped by featureid then year
+#' @param derived.df Dataframe of derived metrics
+#' @param temp.threshold Optional numeric temperature threshold value in degrees C
+#' 
+#' @return Returns Dataframe of derived metrics (e.g. max temperature predicted over daymet record) for each featureid across all years
+#' @details
+#' blah, blah, blah, something, something
+#' 
+#' @examples
+#' 
+#' \dontrun{
+#' 
+#' }
+#' @export
+calcThresholdDaysAnnual <- function(grouped.df, derived.df, temp.threshold, summer = FALSE) {
+  var.name <- paste0("days.", temp.threshold)
+  if(summer) {
+    meanDays <- grouped.df %>%
+      dplyr::mutate(month = as.numeric(format(date, "%m"))) %>%
+      dplyr::filter(month >= 6 & month <= 8) %>%
+      dplyr::filter(tempPredicted > temp.threshold) %>%
+      dplyr::summarise(days = n()) %>%
+      #dplyr::select(-month) %>%
+      dplyr::mutate(days = ifelse(is.na(days), 0, days))
+    #setNames(c("featureid", var.name))
+  } else { 
+    meanDays <- grouped.df %>%
+      dplyr::filter(tempPredicted > temp.threshold) %>%
+      dplyr::summarise(days = n())
+    if(dim(meanDays)[1] > 0) {
+      meanDays <- meanDays %>%
+        dplyr::mutate(days = ifelse(is.na(days), 0, days))
+      # setNames(c("featureid", var.name))
+    } else {
+      meanDays <- meanDays %>%
+        dplyr::mutate(days = NA)
+    }
+  }
+  derived.df <- dplyr::left_join(derived.df, dplyr::select(meanDays, featureid, days), by = "featureid")
+  #derived.df[ , var.name][is.na(derived.df[ , var.name])] <- 0
+  rm(meanDays)
+  
+  return(derived.df)
+}
+
+
+
 #' @title deriveMetrics
 #'
 #' @description
