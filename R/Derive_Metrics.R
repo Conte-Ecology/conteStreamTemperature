@@ -29,7 +29,7 @@ deriveMetricsYear <- function(data) {
   
   # Mean maximum daily mean temperature by featureid (over years) - this must be calculated before totalObs to work with NA and left join if all data missing
   meanMaxTemp <- byfeatureidYear %>%
-    dplyr::summarise(meanMaxTemp = max(tempPredicted, na.rm = T)) 
+    dplyr::summarise(maxTemp = max(tempPredicted, na.rm = T)) 
   
   derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, meanMaxTemp, by = c("featureid", "year"))
   rm(meanMaxTemp)
@@ -42,13 +42,7 @@ deriveMetricsYear <- function(data) {
   
   derivedfeatureidMetrics <- dplyr::left_join(derivedfeatureidMetrics, totalObs, by = c("featureid", "year")) %>%
     dplyr::mutate(totalObs = as.numeric(ifelse(is.na(totalObs), 0, as.numeric(totalObs))))
-  derivedfeatureidMetrics <- dplyr::select(derivedfeatureidMetrics, featureid, year, totalObs, meanMaxTemp)
-  
-  # Maximum max daily mean temperature
-  maxMaxTemp <- byfeatureidYear %>%
-    dplyr::summarise(maxTemp = max(tempPredicted, na.rm = T))
-  derivedfeatureidMetrics <- left_join(derivedfeatureidMetrics, maxMaxTemp, by = c("featureid", "year"))
-  rm(maxMaxTemp)
+  derivedfeatureidMetrics <- dplyr::select(derivedfeatureidMetrics, featureid, year, totalObs, maxTemp)
   
   # Mean July Air Temp
   meanJulyAir <- byfeatureidYear %>%
