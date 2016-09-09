@@ -116,15 +116,15 @@ deriveMetricsYear <- function(data) {
   derivedfeatureidMetrics <- calcThresholdDaysAnnual(byfeatureidYear, derivedfeatureidMetrics, 18) %>%
     dplyr::rename(days.18 = days) %>%
     dplyr::mutate(days.18 = as.numeric(days.18)) %>%
-    dplyr::mutate(days.18 = as.numeric(ifelse(!is.na(meanMaxTemp) & is.na(days.18), 0, days.18)))
+    dplyr::mutate(days.18 = as.numeric(ifelse(!is.na(maxTemp) & is.na(days.18), 0, days.18)))
   derivedfeatureidMetrics <- calcThresholdDaysAnnual(byfeatureidYear, derivedfeatureidMetrics, 20) %>%
     dplyr::rename(days.20 = days) %>%
     dplyr::mutate(days.20 = as.numeric(days.20)) %>%
-    dplyr::mutate(days.20 = as.numeric(ifelse(!is.na(meanMaxTemp) & is.na(days.20), 0, days.20)))
+    dplyr::mutate(days.20 = as.numeric(ifelse(!is.na(maxTemp) & is.na(days.20), 0, days.20)))
   derivedfeatureidMetrics <- calcThresholdDaysAnnual(byfeatureidYear, derivedfeatureidMetrics, 22) %>%
     dplyr::rename(days.22 = days) %>%
     dplyr::mutate(days.22 = as.numeric(days.22)) %>%
-    dplyr::mutate(days.22 = as.numeric(ifelse(!is.na(meanMaxTemp) & is.na(days.22), 0, days.22)))
+    dplyr::mutate(days.22 = as.numeric(ifelse(!is.na(maxTemp) & is.na(days.22), 0, days.22)))
   #if(class(threshold) == "numeric") derivedfeatureidMetrics <- calcThresholdDaysAnnual(byfeatureidYear, derivedfeatureidMetrics, threshold)
   
   # CT DEEP Thresholds
