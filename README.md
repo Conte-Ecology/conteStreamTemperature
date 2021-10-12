@@ -6,10 +6,10 @@ to run the vignettes...
 
 A full example where we use this package can be found on the Conte-Ecology GitHub package in the `conteStreamTemperature_northeast` repository.
 
-To install and load this package you will need to have `RTools` installed and the R package `devtools` loaded. This package provides the `install_github` function so you can install our package directly from GitHub as shown below:
+To install and load this package you will need to have `RTools` installed and the R package `remotes` (or `devtools` which calls to `remotes`) installed. This package provides the `install_github` function so you can install our package directly from GitHub as shown below:
 
 ```
-install_github("conteStreamTemperature", username = "Conte-Ecology")
+remotes::install_github("Conte-Ecology/conteStreamTemperature")
 library(conteStreamTemperature)
 ```
 
